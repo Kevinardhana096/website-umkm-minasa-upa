@@ -23,6 +23,7 @@ export default async function DashboardPage() {
   if (profileError || !profile || (profile.role !== "toko" && profile.role !== "admin")) {
     redirect("/login");
   }
+  if (profile.role === "admin") redirect("/admin");
 
   return <DashboardClient />;
 }

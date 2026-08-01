@@ -16,10 +16,19 @@ export async function POST() {
   }
 
   const supabase = await createClient();
-  const { error } = await supabase.auth.signInWithPassword({ email, password });
+  const { data: authData, error } = await supabase.auth.signInWithPassword({ email, password });
   if (error) {
     return NextResponse.json({ error: "Akun Dev Access gagal login. Periksa kredensial development." }, { status: 401 });
   }
 
-  return NextResponse.json({ ok: true });
+  const { data: profile, error: profileError } = await supabase
+    .from("profiles")
+    .select("role")
+    .eq("id", authData.user.id)
+    .maybeSingle<{ role: "toko" | "admin" }>();
+  if (profileError || !profile) {
+    return NextResponse.json({ error: "Profile akun Dev Access belum tersedia." }, { status: 503 });
+  }
+
+  return NextResponse.json({ ok: true, role: profile.role });
 }

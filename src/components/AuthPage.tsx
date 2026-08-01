@@ -29,9 +29,9 @@ export function AuthPage({ onNavigateHome, onSuccessAuth }: AuthPageProps) {
   const [isDevAccessLoading, setIsDevAccessLoading] = useState(false);
   const isDevelopment = process.env.NODE_ENV === "development";
 
-  const finishAuth = () => {
+  const finishAuth = (destination: "admin" | "dashboard" = "dashboard") => {
     if (onSuccessAuth) return onSuccessAuth();
-    router.push("/dashboard");
+    router.push(destination === "admin" ? "/admin" : "/dashboard");
     router.refresh();
   };
 
@@ -43,13 +43,19 @@ export function AuthPage({ onNavigateHome, onSuccessAuth }: AuthPageProps) {
 
     try {
       const supabase = createClient();
-      const { error: authError } = await supabase.auth.signInWithPassword({
+      const { data: authData, error: authError } = await supabase.auth.signInWithPassword({
         email: loginValues.email,
         password: loginValues.password,
       });
 
       if (authError) throw authError;
-      finishAuth();
+      const { data: profile, error: profileError } = await supabase
+        .from("profiles")
+        .select("role")
+        .eq("id", authData.user.id)
+        .maybeSingle<{ role: "toko" | "admin" }>();
+      if (profileError) throw profileError;
+      finishAuth(profile?.role === "admin" ? "admin" : "dashboard");
     } catch (authError) {
       setError(authError instanceof Error ? authError.message : "Login gagal. Periksa email dan kata sandi.");
     } finally {
@@ -86,9 +92,9 @@ export function AuthPage({ onNavigateHome, onSuccessAuth }: AuthPageProps) {
 
     try {
       const response = await fetch("/api/dev-access", { method: "POST" });
-      const result = await response.json() as { error?: string };
+      const result = await response.json() as { error?: string; role?: "toko" | "admin" };
       if (!response.ok) throw new Error(result.error || "Dev Access gagal.");
-      finishAuth();
+      finishAuth(result.role === "admin" ? "admin" : "dashboard");
     } catch (devError) {
       setError(devError instanceof Error ? devError.message : "Dev Access gagal.");
     } finally {

@@ -26,8 +26,9 @@ You can start editing the page by modifying `src/app/page.tsx`. The page auto-up
 2. Salin `.env.example` menjadi `.env.local`.
 3. Isi `NEXT_PUBLIC_SUPABASE_URL` dan `NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY` dari Project Settings → API.
 4. Jalankan isi `supabase/schema.sql` di Supabase SQL Editor.
-5. Aktifkan Email provider pada Authentication → Providers untuk login email/password.
-6. Pada Authentication → Providers → Email, nonaktifkan **Allow new users to sign up** dan **Confirm Email**. Akun toko hanya dibuat oleh pengelola melalui proses internal dan dapat login tanpa verifikasi email.
+5. Jalankan isi `supabase/admin-dashboard.sql` setelah akun admin tersedia agar admin dapat membaca seluruh toko dan produk.
+6. Aktifkan Email provider pada Authentication → Providers untuk login email/password.
+7. Pada Authentication → Providers → Email, nonaktifkan **Allow new users to sign up** dan **Confirm Email**. Akun toko hanya dibuat oleh pengelola melalui proses internal dan dapat login tanpa verifikasi email.
 
 Pada Authentication → URL Configuration, tambahkan `http://localhost:3000/auth/callback` ke Redirect URLs. Untuk production, tambahkan juga URL domain production dengan path yang sama. Alur lupa kata sandi memakai callback `/auth/callback` lalu mengarahkan pengguna ke `/reset-password`.
 
