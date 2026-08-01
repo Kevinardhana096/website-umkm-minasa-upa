@@ -54,6 +54,8 @@ npm run create:admin
 
 Script bersifat idempotent: jika email sudah ada, password tidak diubah; user dikonfirmasi dan profile-nya diatur menjadi role `admin`. Password hanya dipakai saat membuat user baru.
 
+Pada development lokal, kartu **Dev Access** di halaman login dapat memakai akun ini sebagai shortcut. Tambahkan `DEV_ACCESS_EMAIL` dan `DEV_ACCESS_PASSWORD` di `.env.local`, lalu restart `npm run dev`. Endpoint shortcut hanya aktif ketika `NODE_ENV=development` dan tidak tersedia pada deployment production.
+
 ## Learn More
 
 To learn more about Next.js, take a look at the following resources:
