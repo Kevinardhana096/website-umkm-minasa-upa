@@ -39,7 +39,9 @@ export const Footer: React.FC<FooterProps> = ({ store }) => {
               </li>
               <li className="flex items-center gap-2.5">
                 <Mail className="w-4 h-4 text-gray-700 shrink-0" />
-                <span>hello@batiksejahtera.com</span>
+                <a href="mailto:umkmtangguhminasaupa@gmail.com" className="hover:text-gray-900 hover:underline">
+                  umkmtangguhminasaupa@gmail.com
+                </a>
               </li>
               <li className="flex items-center gap-2.5">
                 <Clock className="w-4 h-4 text-gray-700 shrink-0" />
