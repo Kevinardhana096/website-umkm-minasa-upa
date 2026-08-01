@@ -15,8 +15,14 @@ export interface AdminStoreRow {
 interface AdminProductRow {
   id: string;
   store_id: string;
+  name: string;
+  description: string;
+  image_path: string | null;
+  price: number | string | null;
   is_available: boolean;
   is_visible: boolean;
+  created_at: string;
+  updated_at: string;
 }
 
 export interface AdminStoreSummary extends AdminStoreRow {
@@ -27,6 +33,22 @@ export interface AdminStoreSummary extends AdminStoreRow {
 
 export interface AdminMonitoringData {
   stores: AdminStoreSummary[];
+  products: AdminProductSummary[];
+}
+
+export interface AdminProductSummary {
+  id: string;
+  store_id: string;
+  store_name: string;
+  store_is_active: boolean;
+  name: string;
+  description: string;
+  image_path: string | null;
+  price: number | string | null;
+  is_available: boolean;
+  is_visible: boolean;
+  created_at: string;
+  updated_at: string;
 }
 
 export async function getAdminMonitoringData(): Promise<AdminMonitoringData> {
@@ -39,7 +61,7 @@ export async function getAdminMonitoringData(): Promise<AdminMonitoringData> {
       .returns<AdminStoreRow[]>(),
     supabase
       .from("products")
-      .select("id, store_id, is_available, is_visible")
+      .select("id, store_id, name, description, image_path, price, is_available, is_visible, created_at, updated_at")
       .returns<AdminProductRow[]>(),
   ]);
 
@@ -47,6 +69,8 @@ export async function getAdminMonitoringData(): Promise<AdminMonitoringData> {
     throw new Error("Admin monitoring belum tersedia. Jalankan migration supabase/admin-dashboard.sql di Supabase SQL Editor.");
   }
 
+  const stores = storesResult.data ?? [];
+  const storeById = new Map(stores.map((store) => [store.id, store]));
   const counts = new Map<string, { total: number; visible: number; available: number }>();
   for (const product of productsResult.data ?? []) {
     const current = counts.get(product.store_id) ?? { total: 0, visible: 0, available: 0 };
@@ -57,7 +81,7 @@ export async function getAdminMonitoringData(): Promise<AdminMonitoringData> {
   }
 
   return {
-    stores: (storesResult.data ?? []).map((store) => {
+    stores: stores.map((store) => {
       const storeCounts = counts.get(store.id) ?? { total: 0, visible: 0, available: 0 };
       return {
         ...store,
@@ -66,5 +90,17 @@ export async function getAdminMonitoringData(): Promise<AdminMonitoringData> {
         available_product_count: storeCounts.available,
       };
     }),
+    products: (productsResult.data ?? [])
+      .map((product) => {
+        const store = storeById.get(product.store_id);
+        if (!store) return null;
+        return {
+          ...product,
+          store_name: store.name,
+          store_is_active: store.is_active,
+        };
+      })
+      .filter((product): product is AdminProductSummary => product !== null)
+      .sort((a, b) => new Date(b.updated_at).getTime() - new Date(a.updated_at).getTime()),
   };
 }

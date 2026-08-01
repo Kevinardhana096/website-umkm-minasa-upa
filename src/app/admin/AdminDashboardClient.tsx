@@ -1,14 +1,15 @@
 "use client";
 
 import { useMemo, useState } from "react";
-import { ArrowLeft, CheckCircle2, Eye, LayoutDashboard, LogOut, Package, Search, Store, Users, XCircle } from "lucide-react";
+import { ArrowLeft, CheckCircle2, Eye, LayoutDashboard, LogOut, Package, PackageSearch, Search, Store, Users, XCircle } from "lucide-react";
 import { useRouter } from "next/navigation";
 import { createClient } from "@/lib/supabase/client";
 import type { AdminMonitoringData, AdminStoreSummary } from "@/lib/admin-service";
 import { AdminUserManagement } from "@/components/admin/AdminUserManagement";
+import { AdminProductMonitoring } from "@/components/admin/AdminProductMonitoring";
 
 type StatusFilter = "semua" | "aktif" | "nonaktif";
-type AdminSection = "monitoring" | "users";
+type AdminSection = "monitoring" | "products" | "users";
 
 interface AdminDashboardClientProps {
   initialData: AdminMonitoringData;
@@ -58,8 +59,8 @@ export function AdminDashboardClient({ initialData }: AdminDashboardClientProps)
         <div className="mx-auto flex max-w-7xl flex-wrap items-center justify-between gap-4 px-6 py-5 lg:px-8">
           <div>
             <p className="text-xs font-extrabold uppercase tracking-wider text-[#0F2C23]">Platform Admin</p>
-            <h1 className="mt-1 text-2xl font-black tracking-tight text-gray-900">{activeSection === "monitoring" ? "Monitoring Seluruh Toko" : "Manajemen User"}</h1>
-            <p className="mt-1 text-sm text-gray-500">{activeSection === "monitoring" ? "Ringkasan katalog dan status produk seluruh mitra UMKM." : "Kelola akses login dan role pengguna platform."}</p>
+            <h1 className="mt-1 text-2xl font-black tracking-tight text-gray-900">{activeSection === "monitoring" ? "Monitoring Seluruh Toko" : activeSection === "products" ? "Monitoring Seluruh Produk" : "Manajemen User"}</h1>
+            <p className="mt-1 text-sm text-gray-500">{activeSection === "monitoring" ? "Ringkasan katalog dan status produk seluruh mitra UMKM." : activeSection === "products" ? "Pantau produk, toko pemilik, dan status katalog seluruh mitra." : "Kelola akses login dan role pengguna platform."}</p>
           </div>
           <div className="flex items-center gap-2">
             <button type="button" onClick={() => router.push("/")} className="inline-flex items-center gap-2 rounded-xl border border-gray-200 bg-white px-3.5 py-2.5 text-sm font-bold text-gray-700 hover:bg-gray-50">
@@ -76,6 +77,9 @@ export function AdminDashboardClient({ initialData }: AdminDashboardClientProps)
         <nav className="flex flex-wrap gap-2 rounded-2xl border border-gray-100 bg-white p-2 shadow-sm" aria-label="Menu admin">
           <button type="button" onClick={() => setActiveSection("monitoring")} className={`inline-flex items-center gap-2 rounded-xl px-4 py-2.5 text-sm font-bold transition ${activeSection === "monitoring" ? "bg-[#0F2C23] text-white" : "text-gray-600 hover:bg-gray-50"}`}>
             <LayoutDashboard className="h-4 w-4" /> Monitoring toko
+          </button>
+          <button type="button" onClick={() => setActiveSection("products")} className={`inline-flex items-center gap-2 rounded-xl px-4 py-2.5 text-sm font-bold transition ${activeSection === "products" ? "bg-[#0F2C23] text-white" : "text-gray-600 hover:bg-gray-50"}`}>
+            <PackageSearch className="h-4 w-4" /> Monitoring produk
           </button>
           <button type="button" onClick={() => setActiveSection("users")} className={`inline-flex items-center gap-2 rounded-xl px-4 py-2.5 text-sm font-bold transition ${activeSection === "users" ? "bg-[#0F2C23] text-white" : "text-gray-600 hover:bg-gray-50"}`}>
             <Users className="h-4 w-4" /> Manajemen user
@@ -125,7 +129,7 @@ export function AdminDashboardClient({ initialData }: AdminDashboardClientProps)
             </div>
           )}
         </section>
-        </> : <AdminUserManagement />}
+        </> : activeSection === "products" ? <AdminProductMonitoring products={initialData.products} /> : <AdminUserManagement />}
       </div>
     </main>
   );
