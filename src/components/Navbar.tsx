@@ -4,6 +4,7 @@ import React, { useState, useEffect } from 'react';
 import Image from 'next/image';
 import { MessageSquare, Menu, X } from 'lucide-react';
 import { InstitutionalLogos } from './InstitutionalLogos';
+import { createClient } from '@/lib/supabase/client';
 
 interface NavbarProps {
   onContactClick?: () => void;
@@ -15,6 +16,57 @@ export const Navbar: React.FC<NavbarProps> = ({
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
   const [isVisible, setIsVisible] = useState(true);
   const [lastScrollY, setLastScrollY] = useState(0);
+  const [dashboardHref, setDashboardHref] = useState<string | null>(null);
+  const [dashboardLabel, setDashboardLabel] = useState('Login Pengelola');
+
+  useEffect(() => {
+    const supabase = createClient();
+    let cancelled = false;
+
+    const loadDashboardDestination = async () => {
+      const { data: userData } = await supabase.auth.getUser();
+      if (!userData.user) {
+        if (!cancelled) {
+          setDashboardHref(null);
+          setDashboardLabel('Login Pengelola');
+        }
+        return;
+      }
+
+      const { data: profile } = await supabase
+        .from('profiles')
+        .select('role')
+        .eq('id', userData.user.id)
+        .maybeSingle<{ role: 'toko' | 'admin' }>();
+      if (cancelled) return;
+
+      if (profile?.role === 'admin') {
+        setDashboardHref('/admin');
+        setDashboardLabel('Dashboard Admin');
+      } else if (profile?.role === 'toko') {
+        setDashboardHref('/dashboard');
+        setDashboardLabel('Dashboard Toko');
+      } else {
+        setDashboardHref(null);
+        setDashboardLabel('Login Pengelola');
+      }
+    };
+
+    void loadDashboardDestination();
+    const { data: authListener } = supabase.auth.onAuthStateChange((_event, session) => {
+      if (!session) {
+        setDashboardHref(null);
+        setDashboardLabel('Login Pengelola');
+        return;
+      }
+      void loadDashboardDestination();
+    });
+
+    return () => {
+      cancelled = true;
+      authListener.subscription.unsubscribe();
+    };
+  }, []);
 
   useEffect(() => {
     const handleScroll = () => {
@@ -73,11 +125,11 @@ export const Navbar: React.FC<NavbarProps> = ({
 
           {/* Right Action Buttons */}
           <div className="hidden md:flex items-center space-x-3">
-            <a 
-              href="/login" 
+            <a
+              href={dashboardHref ?? '/login'}
               className="px-3.5 py-2 rounded-lg text-sm font-semibold text-gray-700 hover:text-[#0F2C23] hover:bg-gray-100 transition-all"
             >
-              Login Pengelola
+              {dashboardLabel}
             </a>
             <button
               onClick={onContactClick}
@@ -107,11 +159,11 @@ export const Navbar: React.FC<NavbarProps> = ({
         <div className="md:hidden border-b border-gray-200 bg-white px-4 pt-2 pb-4 space-y-3">
           <div className="flex flex-col gap-2 pt-1">
             <a
-              href="/login"
+              href={dashboardHref ?? '/login'}
               onClick={() => setMobileMenuOpen(false)}
               className="flex items-center justify-center py-2.5 rounded-lg border border-gray-200 text-sm font-semibold text-gray-700 hover:bg-gray-50"
             >
-              Login Pengelola
+              {dashboardLabel}
             </a>
             <button
               onClick={() => {
