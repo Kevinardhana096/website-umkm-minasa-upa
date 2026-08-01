@@ -46,8 +46,26 @@ To learn more about Next.js, take a look at the following resources:
 
 You can check out [the Next.js GitHub repository](https://github.com/vercel/next.js) - your feedback and contributions are welcome!
 
-## Deploy on Vercel
+## Deploy ke Vercel
 
-The easiest way to deploy your Next.js app is to use the [Vercel Platform](https://vercel.com/new?utm_medium=default-template&filter=next.js&utm_source=create-next-app&utm_campaign=create-next-app-readme) from the creators of Next.js.
+Repository ini siap dideploy dari branch `main` tanpa file konfigurasi Vercel tambahan.
 
-Check out our [Next.js deployment documentation](https://nextjs.org/docs/app/building-your-application/deploying) for more details.
+1. Buka [Vercel](https://vercel.com/new) dan login dengan akun GitHub yang memiliki akses ke repository ini.
+2. Pilih repository `Kevinardhana096/website-umkm-minasa-upa` lalu klik **Import**.
+3. Pastikan Framework Preset terdeteksi sebagai **Next.js**, Root Directory kosong, dan Production Branch adalah `main`.
+4. Pada **Environment Variables**, tambahkan untuk environment **Production** dan **Preview**:
+
+   ```env
+   NEXT_PUBLIC_SUPABASE_URL=https://your-project.supabase.co
+   NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY=your-publishable-key
+   ```
+
+5. Klik **Deploy**. Vercel akan menjalankan `npm run build` secara otomatis.
+6. Setelah mendapat URL production, misalnya `https://website-umkm-minasa-upa.vercel.app`, buka Supabase **Authentication → URL Configuration** lalu:
+   - isi **Site URL** dengan URL production tersebut;
+   - tambahkan `https://website-umkm-minasa-upa.vercel.app/auth/callback` ke **Redirect URLs**;
+   - pertahankan `http://localhost:3000/auth/callback` untuk development lokal.
+
+Untuk deployment preview Vercel, tambahkan pola `https://*-<slug-akun-atau-tim>.vercel.app/**` ke Redirect URLs Supabase. Gunakan URL production yang tepat untuk Site URL agar reset password selalu mengarah ke website publik yang benar.
+
+Jangan memasukkan service-role key, password, atau secret provider AI ke Vercel sebagai variabel `NEXT_PUBLIC_*`.
