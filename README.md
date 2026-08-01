@@ -37,6 +37,23 @@ Jangan memasukkan secret/service-role key ke variabel `NEXT_PUBLIC_*` atau ke ko
 
 > Penting: halaman `/register` hanya menutup pendaftaran dari sisi aplikasi. Menonaktifkan public sign-up di pengaturan Supabase tetap wajib agar endpoint Auth tidak dapat digunakan untuk membuat akun publik.
 
+## Membuat akun admin
+
+Pembuatan user Auth dan perubahan role `profiles` membutuhkan service-role key, jadi jalankan script ini hanya dari terminal lokal atau server tepercaya. Jangan pernah menaruh key tersebut di Vercel sebagai variabel `NEXT_PUBLIC_*` atau commit ke Git.
+
+Di PowerShell, dari folder project:
+
+```powershell
+$env:SUPABASE_URL = "https://your-project.supabase.co"
+$env:SUPABASE_SERVICE_ROLE_KEY = "service-role-key-dari-supabase"
+$env:ADMIN_EMAIL = "admin@example.com"
+$env:ADMIN_PASSWORD = "password-kuat-minimal-6-karakter"
+$env:ADMIN_FULL_NAME = "Administrator UMKM"
+npm run create:admin
+```
+
+Script bersifat idempotent: jika email sudah ada, password tidak diubah; user dikonfirmasi dan profile-nya diatur menjadi role `admin`. Password hanya dipakai saat membuat user baru.
+
 ## Learn More
 
 To learn more about Next.js, take a look at the following resources:
