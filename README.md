@@ -27,8 +27,9 @@ You can start editing the page by modifying `src/app/page.tsx`. The page auto-up
 3. Isi `NEXT_PUBLIC_SUPABASE_URL` dan `NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY` dari Project Settings → API.
 4. Jalankan isi `supabase/schema.sql` di Supabase SQL Editor.
 5. Jalankan isi `supabase/admin-dashboard.sql` setelah akun admin tersedia agar admin dapat membaca seluruh toko dan produk.
-6. Aktifkan Email provider pada Authentication → Providers untuk login email/password.
-7. Pada Authentication → Providers → Email, nonaktifkan **Allow new users to sign up** dan **Confirm Email**. Akun toko hanya dibuat oleh pengelola melalui proses internal dan dapat login tanpa verifikasi email.
+6. Jalankan isi `supabase/role-hardening.sql` agar hanya role `toko` yang dapat membuat atau mengubah toko, produk, dan foto.
+7. Aktifkan Email provider pada Authentication → Providers untuk login email/password.
+8. Pada Authentication → Providers → Email, nonaktifkan **Allow new users to sign up** dan **Confirm Email**. Akun toko hanya dibuat oleh pengelola melalui proses internal dan dapat login tanpa verifikasi email.
 
 Pada Authentication → URL Configuration, tambahkan `http://localhost:3000/auth/callback` ke Redirect URLs. Untuk production, tambahkan juga URL domain production dengan path yang sama. Alur lupa kata sandi memakai callback `/auth/callback` lalu mengarahkan pengguna ke `/reset-password`.
 
@@ -55,6 +56,8 @@ npm run create:admin
 
 Script bersifat idempotent: jika email sudah ada, password tidak diubah; user dikonfirmasi dan profile-nya diatur menjadi role `admin`. Password hanya dipakai saat membuat user baru.
 
+Setelah login sebagai admin, halaman `/admin` menyediakan menu **Manajemen user** untuk membuat user toko/admin, mengubah role, menonaktifkan atau mengaktifkan akses login, serta mereset password. Fitur ini memakai `SUPABASE_SERVICE_ROLE_KEY` di Route Handler server; tambahkan key tersebut ke `.env.local` saat development atau ke Environment Variables Vercel (tanpa awalan `NEXT_PUBLIC_`) bila fitur ini dipakai di production. Jangan pernah mengekspos atau memasukkan key tersebut ke kode browser.
+
 Pada development lokal, kartu **Dev Access** di halaman login dapat memakai akun ini sebagai shortcut. Tambahkan `DEV_ACCESS_EMAIL` dan `DEV_ACCESS_PASSWORD` di `.env.local`, lalu restart `npm run dev`. Endpoint shortcut hanya aktif ketika `NODE_ENV=development` dan tidak tersedia pada deployment production.
 
 ## Learn More
@@ -78,6 +81,8 @@ Repository ini siap dideploy dari branch `main` tanpa file konfigurasi Vercel ta
    ```env
    NEXT_PUBLIC_SUPABASE_URL=https://your-project.supabase.co
    NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY=your-publishable-key
+   # Hanya jika menu Manajemen user admin digunakan:
+   SUPABASE_SERVICE_ROLE_KEY=your-service-role-key
    ```
 
 5. Klik **Deploy**. Vercel akan menjalankan `npm run build` secara otomatis.

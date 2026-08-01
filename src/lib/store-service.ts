@@ -33,8 +33,8 @@ export async function getCurrentStoreData(): Promise<StoreData> {
     .maybeSingle<{ role: "toko" | "admin" }>();
 
   if (profileError) throw profileError;
-  if (!profile || !["toko", "admin"].includes(profile.role)) {
-    throw new Error("Akun tidak memiliki role Toko yang valid.");
+  if (!profile || profile.role !== "toko") {
+    throw new Error("Dashboard toko hanya dapat diakses oleh akun dengan role Toko.");
   }
 
   const { data: existingStore, error: storeError } = await supabase
