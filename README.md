@@ -1,4 +1,6 @@
-This is a [Next.js](https://nextjs.org) project bootstrapped with [`create-next-app`](https://nextjs.org/docs/app/api-reference/cli/create-next-app).
+# Katalog UMKM
+
+Website katalog produk UMKM berbasis Next.js dan Supabase.
 
 ## Getting Started
 
@@ -16,9 +18,24 @@ bun dev
 
 Open [http://localhost:3000](http://localhost:3000) with your browser to see the result.
 
-You can start editing the page by modifying `app/page.tsx`. The page auto-updates as you edit the file.
+You can start editing the page by modifying `src/app/page.tsx`. The page auto-updates as you edit the file.
 
-This project uses [`next/font`](https://nextjs.org/docs/app/building-your-application/optimizing/fonts) to automatically optimize and load [Geist](https://vercel.com/font), a new font family for Vercel.
+## Supabase setup
+
+1. Buat project baru di [Supabase](https://supabase.com/dashboard).
+2. Salin `.env.example` menjadi `.env.local`.
+3. Isi `NEXT_PUBLIC_SUPABASE_URL` dan `NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY` dari Project Settings → API.
+4. Jalankan isi `supabase/schema.sql` di Supabase SQL Editor.
+5. Aktifkan Email provider pada Authentication → Providers untuk login email/password.
+6. Pada Authentication → Providers → Email, nonaktifkan **Allow new users to sign up** dan **Confirm Email**. Akun toko hanya dibuat oleh pengelola melalui proses internal dan dapat login tanpa verifikasi email.
+
+Pada Authentication → URL Configuration, tambahkan `http://localhost:3000/auth/callback` ke Redirect URLs. Untuk production, tambahkan juga URL domain production dengan path yang sama. Alur lupa kata sandi memakai callback `/auth/callback` lalu mengarahkan pengguna ke `/reset-password`.
+
+Client Supabase tersedia di `src/lib/supabase/client.ts` untuk Client Components dan `src/lib/supabase/server.ts` untuk Server Components, Server Actions, serta Route Handlers. `src/proxy.ts` menjaga sesi Auth berbasis cookie tetap diperbarui.
+
+Jangan memasukkan secret/service-role key ke variabel `NEXT_PUBLIC_*` atau ke kode browser.
+
+> Penting: halaman `/register` hanya menutup pendaftaran dari sisi aplikasi. Menonaktifkan public sign-up di pengaturan Supabase tetap wajib agar endpoint Auth tidak dapat digunakan untuk membuat akun publik.
 
 ## Learn More
 
