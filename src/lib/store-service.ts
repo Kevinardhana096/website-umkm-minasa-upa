@@ -19,6 +19,14 @@ export interface StoreData {
   products: ProductRow[];
 }
 
+export interface StoreProfileInput {
+  name: string;
+  sellerName: string;
+  description: string;
+  whatsappNumber: string;
+  isActive: boolean;
+}
+
 export async function getCurrentStoreData(): Promise<StoreData> {
   const supabase = createClient();
   const { data: userData, error: userError } = await supabase.auth.getUser();
@@ -81,6 +89,34 @@ export async function getCurrentStoreData(): Promise<StoreData> {
   if (productsError) throw productsError;
 
   return { user, store, products: products ?? [] };
+}
+
+export async function updateCurrentStore(storeId: string, input: StoreProfileInput) {
+  const name = input.name.trim();
+  const sellerName = input.sellerName.trim();
+  const description = input.description.trim();
+  const whatsappNumber = input.whatsappNumber.replace(/\D/g, "");
+
+  if (name.length < 2) throw new Error("Nama toko minimal 2 karakter.");
+  if (sellerName.length < 2) throw new Error("Nama penjual minimal 2 karakter.");
+  if (whatsappNumber.length < 8) throw new Error("Nomor WhatsApp belum valid.");
+
+  const supabase = createClient();
+  const { data, error } = await supabase
+    .from("stores")
+    .update({
+      name,
+      seller_name: sellerName,
+      description: description || null,
+      whatsapp_number: whatsappNumber,
+      is_active: input.isActive,
+    })
+    .eq("id", storeId)
+    .select("id, owner_id, name, seller_name, description, whatsapp_number, is_active")
+    .single<StoreRow>();
+
+  if (error) throw error;
+  return data;
 }
 
 async function uploadProductImage(userId: string, file: File) {

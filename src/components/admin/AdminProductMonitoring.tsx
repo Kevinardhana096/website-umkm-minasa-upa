@@ -1,12 +1,19 @@
 "use client";
 
 import { useMemo, useState } from "react";
-import { CheckCircle2, Eye, EyeOff, PackageSearch, Search, XCircle } from "lucide-react";
+import { CheckCircle2, Edit, Eye, EyeOff, PackageSearch, Search, Trash2, XCircle } from "lucide-react";
 import type { AdminProductSummary } from "@/lib/admin-service";
 
 type ProductStatusFilter = "semua" | "tampil" | "tersembunyi" | "tersedia" | "habis";
 
-export function AdminProductMonitoring({ products }: { products: AdminProductSummary[] }) {
+interface AdminProductMonitoringProps {
+  products: AdminProductSummary[];
+  onEdit: (product: AdminProductSummary) => void;
+  onDelete: (product: AdminProductSummary) => void;
+  pendingAction?: string | null;
+}
+
+export function AdminProductMonitoring({ products, onEdit, onDelete, pendingAction }: AdminProductMonitoringProps) {
   const [searchQuery, setSearchQuery] = useState("");
   const [statusFilter, setStatusFilter] = useState<ProductStatusFilter>("semua");
 
@@ -54,12 +61,12 @@ export function AdminProductMonitoring({ products }: { products: AdminProductSum
         <div className="p-12 text-center text-sm text-gray-500">Tidak ada produk yang cocok dengan filter.</div>
       ) : (
         <div className="overflow-x-auto">
-          <table className="w-full min-w-[920px] text-left text-sm">
+          <table className="w-full min-w-[1040px] text-left text-sm">
             <thead className="border-b border-gray-100 bg-gray-50/70 text-xs font-bold uppercase tracking-wider text-gray-500">
-              <tr><th className="px-5 py-4">Produk</th><th className="px-5 py-4">Toko</th><th className="px-5 py-4">Harga</th><th className="px-5 py-4">Status</th><th className="px-5 py-4">Diperbarui</th></tr>
+              <tr><th className="px-5 py-4">Produk</th><th className="px-5 py-4">Toko</th><th className="px-5 py-4">Harga</th><th className="px-5 py-4">Status</th><th className="px-5 py-4">Diperbarui</th><th className="px-5 py-4">Aksi</th></tr>
             </thead>
             <tbody className="divide-y divide-gray-100">
-              {filteredProducts.map((product) => <ProductRow key={product.id} product={product} />)}
+              {filteredProducts.map((product) => <ProductRow key={product.id} product={product} onEdit={onEdit} onDelete={onDelete} pendingAction={pendingAction} />)}
             </tbody>
           </table>
         </div>
@@ -68,7 +75,8 @@ export function AdminProductMonitoring({ products }: { products: AdminProductSum
   );
 }
 
-function ProductRow({ product }: { product: AdminProductSummary }) {
+function ProductRow({ product, onEdit, onDelete, pendingAction }: { product: AdminProductSummary; onEdit: (product: AdminProductSummary) => void; onDelete: (product: AdminProductSummary) => void; pendingAction?: string | null }) {
+  const isPending = pendingAction?.startsWith(`${product.id}:`);
   return (
     <tr className="hover:bg-gray-50/70">
       <td className="max-w-[360px] px-5 py-4"><p className="font-bold text-gray-900">{product.name}</p><p className="mt-1 line-clamp-2 text-xs text-gray-500">{product.description || "Tanpa deskripsi"}</p></td>
@@ -76,6 +84,7 @@ function ProductRow({ product }: { product: AdminProductSummary }) {
       <td className="px-5 py-4 whitespace-nowrap font-semibold text-gray-700">{formatPrice(product.price)}</td>
       <td className="px-5 py-4"><div className="flex flex-wrap gap-1.5">{product.is_visible ? <span className="inline-flex items-center gap-1 rounded-full bg-emerald-50 px-2.5 py-1 text-xs font-bold text-emerald-700"><Eye className="h-3.5 w-3.5" /> Tampil</span> : <span className="inline-flex items-center gap-1 rounded-full bg-gray-100 px-2.5 py-1 text-xs font-bold text-gray-600"><EyeOff className="h-3.5 w-3.5" /> Tersembunyi</span>}{product.is_available ? <span className="inline-flex items-center gap-1 rounded-full bg-blue-50 px-2.5 py-1 text-xs font-bold text-blue-700"><CheckCircle2 className="h-3.5 w-3.5" /> Tersedia</span> : <span className="inline-flex items-center gap-1 rounded-full bg-amber-50 px-2.5 py-1 text-xs font-bold text-amber-700"><XCircle className="h-3.5 w-3.5" /> Tidak tersedia</span>}</div></td>
       <td className="px-5 py-4 text-xs text-gray-500">{formatDate(product.updated_at)}</td>
+      <td className="px-5 py-4"><div className="flex gap-2"><button type="button" onClick={() => onEdit(product)} disabled={isPending} className="inline-flex items-center gap-1.5 rounded-lg border border-gray-200 px-2.5 py-1.5 text-xs font-bold text-gray-700 hover:bg-gray-50 disabled:cursor-not-allowed disabled:opacity-50"><Edit className="h-3.5 w-3.5" /> Edit</button><button type="button" onClick={() => onDelete(product)} disabled={isPending} className="inline-flex items-center gap-1.5 rounded-lg border border-rose-200 px-2.5 py-1.5 text-xs font-bold text-rose-700 hover:bg-rose-50 disabled:cursor-not-allowed disabled:opacity-50"><Trash2 className="h-3.5 w-3.5" /> Hapus</button></div></td>
     </tr>
   );
 }

@@ -9,10 +9,10 @@ import {
   Lock,
   MailCheck,
   RefreshCw,
-  ShieldCheck,
   Unlock,
   UserPlus,
   Users,
+  X,
   XCircle,
 } from "lucide-react";
 
@@ -27,23 +27,30 @@ interface AdminUser {
   store_is_active: boolean | null;
   email_confirmed: boolean;
   banned_until: string | null;
-  is_current_user: boolean;
   created_at: string;
+  is_current_user?: boolean;
 }
 
+type PendingAction = string | null;
+
 interface UserFormState {
-  email: string;
   full_name: string;
+  email: string;
   password: string;
   role: Role;
 }
 
-type PendingAction = `${string}:${"role" | "ban" | "reset_password"}` | null;
-
-const EMPTY_FORM: UserFormState = { email: "", full_name: "", password: "", role: "toko" };
+const EMPTY_FORM: UserFormState = {
+  full_name: "",
+  email: "",
+  password: "",
+  role: "toko",
+};
 
 function isBanned(user: AdminUser) {
-  return Boolean(user.banned_until && new Date(user.banned_until).getTime() > Date.now());
+  if (!user.banned_until) return false;
+  const time = new Date(user.banned_until).getTime();
+  return !Number.isNaN(time) && time > Date.now();
 }
 
 function formatDate(value: string) {
@@ -56,6 +63,7 @@ export function AdminUserManagement() {
   const [form, setForm] = useState<UserFormState>(EMPTY_FORM);
   const [isLoading, setIsLoading] = useState(true);
   const [isCreating, setIsCreating] = useState(false);
+  const [isFormOpen, setIsFormOpen] = useState(false);
   const [pendingAction, setPendingAction] = useState<PendingAction>(null);
   const [errorMessage, setErrorMessage] = useState("");
   const [successMessage, setSuccessMessage] = useState("");
@@ -98,6 +106,7 @@ export function AdminUserManagement() {
       if (!response.ok) throw new Error(payload.error || "User gagal dibuat.");
       setForm(EMPTY_FORM);
       setSuccessMessage("User berhasil dibuat dan dapat langsung login.");
+      setIsFormOpen(false);
       await loadUsers();
     } catch (error) {
       setErrorMessage(error instanceof Error ? error.message : "User gagal dibuat.");
@@ -160,30 +169,129 @@ export function AdminUserManagement() {
           </div>
           <p className="mt-1 text-sm text-gray-500">Buat akun, atur role, dan aktifkan atau nonaktifkan akses login.</p>
         </div>
-        <button type="button" onClick={() => void loadUsers()} disabled={isLoading} className="inline-flex items-center justify-center gap-2 rounded-xl border border-gray-200 bg-white px-3.5 py-2.5 text-sm font-bold text-gray-700 hover:bg-gray-50 disabled:opacity-60">
-          <RefreshCw className={`h-4 w-4 ${isLoading ? "animate-spin" : ""}`} /> Muat ulang
-        </button>
+        <div className="flex flex-wrap items-center gap-2">
+          <button
+            type="button"
+            onClick={() => setIsFormOpen(true)}
+            className="inline-flex items-center justify-center gap-2 rounded-xl bg-[#0F2C23] px-3.5 py-2.5 text-sm font-bold text-white hover:bg-[#184537] transition shadow-xs"
+          >
+            <UserPlus className="h-4 w-4" /> Tambah User
+          </button>
+          <button
+            type="button"
+            onClick={() => void loadUsers()}
+            disabled={isLoading}
+            className="inline-flex items-center justify-center gap-2 rounded-xl border border-gray-200 bg-white px-3.5 py-2.5 text-sm font-bold text-gray-700 hover:bg-gray-50 disabled:opacity-60"
+          >
+            <RefreshCw className={`h-4 w-4 ${isLoading ? "animate-spin" : ""}`} /> Muat ulang
+          </button>
+        </div>
       </div>
 
       {errorMessage && <div role="alert" className="flex items-start gap-2 rounded-xl border border-red-100 bg-red-50 px-4 py-3 text-sm font-semibold text-red-700"><AlertCircle className="mt-0.5 h-4 w-4 shrink-0" /> <span>{errorMessage}</span></div>}
       {successMessage && <div role="status" className="flex items-start gap-2 rounded-xl border border-emerald-100 bg-emerald-50 px-4 py-3 text-sm font-semibold text-emerald-700"><CheckCircle2 className="mt-0.5 h-4 w-4 shrink-0" /> <span>{successMessage}</span></div>}
 
-      <div className="grid gap-4 sm:grid-cols-3">
-        <UserMetric icon={<Users className="h-5 w-5" />} label="Total user" value={users.length} tone="green" />
-        <UserMetric icon={<ShieldCheck className="h-5 w-5" />} label="Admin" value={adminCount} tone="blue" />
-        <UserMetric icon={<Lock className="h-5 w-5" />} label="Dinonaktifkan" value={bannedCount} tone="amber" />
+      <div className="grid grid-cols-3 gap-2.5 sm:gap-4">
+        <UserMetric label="Total user" value={users.length} tone="green" />
+        <UserMetric label="Admin" value={adminCount} tone="blue" />
+        <UserMetric label="Dinonaktifkan" value={bannedCount} tone="amber" />
       </div>
 
-      <form onSubmit={createUser} className="rounded-2xl border border-gray-100 bg-white p-5 shadow-sm">
-        <div className="flex items-center gap-2"><UserPlus className="h-5 w-5 text-[#0F2C23]" /><h3 className="font-extrabold text-gray-900">Buat user baru</h3></div>
-        <div className="mt-4 grid gap-3 md:grid-cols-2 lg:grid-cols-4">
-          <label className="text-sm font-semibold text-gray-700">Nama lengkap<input value={form.full_name} onChange={(event) => setForm((current) => ({ ...current, full_name: event.target.value }))} placeholder="Nama user" className="mt-1.5 w-full rounded-xl border border-gray-200 px-3 py-2.5 font-normal outline-none focus:border-[#0F2C23]" /></label>
-          <label className="text-sm font-semibold text-gray-700">Email<input type="email" required value={form.email} onChange={(event) => setForm((current) => ({ ...current, email: event.target.value }))} placeholder="user@email.com" className="mt-1.5 w-full rounded-xl border border-gray-200 px-3 py-2.5 font-normal outline-none focus:border-[#0F2C23]" /></label>
-          <label className="text-sm font-semibold text-gray-700">Password<input type="password" required minLength={6} value={form.password} onChange={(event) => setForm((current) => ({ ...current, password: event.target.value }))} placeholder="Minimal 6 karakter" className="mt-1.5 w-full rounded-xl border border-gray-200 px-3 py-2.5 font-normal outline-none focus:border-[#0F2C23]" /></label>
-          <label className="text-sm font-semibold text-gray-700">Role<select value={form.role} onChange={(event) => setForm((current) => ({ ...current, role: event.target.value as Role }))} className="mt-1.5 w-full rounded-xl border border-gray-200 bg-white px-3 py-2.5 font-normal outline-none focus:border-[#0F2C23]"><option value="toko">Toko</option><option value="admin">Admin</option></select></label>
+      {/* Modal Popup Buat User */}
+      {isFormOpen && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/50 backdrop-blur-xs animate-in fade-in duration-200">
+          <div className="fixed inset-0" onClick={() => setIsFormOpen(false)} aria-hidden="true" />
+          <div className="relative w-full max-w-lg rounded-2xl border border-gray-100 bg-white p-6 shadow-2xl animate-in zoom-in-95 duration-200">
+            <div className="flex items-center justify-between border-b border-gray-100 pb-4">
+              <div className="flex items-center gap-2.5">
+                <div className="flex h-9 w-9 items-center justify-center rounded-xl bg-[#0F2C23]/10 text-[#0F2C23]">
+                  <UserPlus className="h-5 w-5" />
+                </div>
+                <div>
+                  <h3 className="text-lg font-extrabold text-gray-900">Buat User Baru</h3>
+                  <p className="text-xs text-gray-500">Tambahkan akun baru ke platform UMKM.</p>
+                </div>
+              </div>
+              <button
+                type="button"
+                onClick={() => setIsFormOpen(false)}
+                className="rounded-xl p-2 text-gray-400 hover:bg-gray-100 hover:text-gray-600 transition"
+                aria-label="Tutup modal"
+              >
+                <X className="h-5 w-5" />
+              </button>
+            </div>
+
+            <form onSubmit={createUser} className="mt-5 space-y-4">
+              <div>
+                <label className="block text-xs font-bold uppercase tracking-wider text-gray-700">Nama Lengkap</label>
+                <input
+                  value={form.full_name}
+                  onChange={(event) => setForm((current) => ({ ...current, full_name: event.target.value }))}
+                  placeholder="Contoh: Budi Santoso"
+                  className="mt-1.5 w-full rounded-xl border border-gray-200 px-3.5 py-2.5 text-sm font-normal outline-none focus:border-[#0F2C23] focus:ring-1 focus:ring-[#0F2C23]"
+                />
+              </div>
+
+              <div>
+                <label className="block text-xs font-bold uppercase tracking-wider text-gray-700">Email Login <span className="text-red-500">*</span></label>
+                <input
+                  type="email"
+                  required
+                  value={form.email}
+                  onChange={(event) => setForm((current) => ({ ...current, email: event.target.value }))}
+                  placeholder="user@email.com"
+                  className="mt-1.5 w-full rounded-xl border border-gray-200 px-3.5 py-2.5 text-sm font-normal outline-none focus:border-[#0F2C23] focus:ring-1 focus:ring-[#0F2C23]"
+                />
+              </div>
+
+              <div className="grid gap-4 sm:grid-cols-2">
+                <div>
+                  <label className="block text-xs font-bold uppercase tracking-wider text-gray-700">Password <span className="text-red-500">*</span></label>
+                  <input
+                    type="password"
+                    required
+                    minLength={6}
+                    value={form.password}
+                    onChange={(event) => setForm((current) => ({ ...current, password: event.target.value }))}
+                    placeholder="Minimal 6 karakter"
+                    className="mt-1.5 w-full rounded-xl border border-gray-200 px-3.5 py-2.5 text-sm font-normal outline-none focus:border-[#0F2C23] focus:ring-1 focus:ring-[#0F2C23]"
+                  />
+                </div>
+
+                <div>
+                  <label className="block text-xs font-bold uppercase tracking-wider text-gray-700">Role Pengguna</label>
+                  <select
+                    value={form.role}
+                    onChange={(event) => setForm((current) => ({ ...current, role: event.target.value as Role }))}
+                    className="mt-1.5 w-full rounded-xl border border-gray-200 bg-white px-3.5 py-2.5 text-sm font-semibold text-gray-700 outline-none focus:border-[#0F2C23] focus:ring-1 focus:ring-[#0F2C23]"
+                  >
+                    <option value="toko">Toko</option>
+                    <option value="admin">Admin</option>
+                  </select>
+                </div>
+              </div>
+
+              <div className="mt-6 flex items-center justify-end gap-3 border-t border-gray-100 pt-4">
+                <button
+                  type="button"
+                  onClick={() => setIsFormOpen(false)}
+                  className="rounded-xl border border-gray-200 bg-white px-4 py-2.5 text-sm font-bold text-gray-700 hover:bg-gray-50 transition"
+                >
+                  Batal
+                </button>
+                <button
+                  type="submit"
+                  disabled={isCreating}
+                  className="inline-flex items-center gap-2 rounded-xl bg-[#0F2C23] px-5 py-2.5 text-sm font-bold text-white hover:bg-[#184537] disabled:opacity-60 transition shadow-sm"
+                >
+                  <UserPlus className="h-4 w-4" /> {isCreating ? "Membuat..." : "Buat User Baru"}
+                </button>
+              </div>
+            </form>
+          </div>
         </div>
-        <button type="submit" disabled={isCreating} className="mt-4 inline-flex items-center gap-2 rounded-xl bg-[#0F2C23] px-4 py-2.5 text-sm font-bold text-white hover:bg-[#184537] disabled:opacity-60"><UserPlus className="h-4 w-4" />{isCreating ? "Membuat..." : "Buat user"}</button>
-      </form>
+      )}
 
       <div className="overflow-hidden rounded-2xl border border-gray-100 bg-white shadow-sm">
         <div className="border-b border-gray-100 p-5"><h3 className="font-extrabold text-gray-900">Daftar user</h3><p className="mt-1 text-xs text-gray-500">Password tidak pernah ditampilkan. Gunakan reset password bila diperlukan.</p></div>
@@ -213,7 +321,16 @@ function UserRow({ user, pendingAction, onRoleChange, onBanToggle, onResetPasswo
   </tr>;
 }
 
-function UserMetric({ icon, label, value, tone }: { icon: React.ReactNode; label: string; value: number; tone: "green" | "blue" | "amber" }) {
-  const tones = { green: "bg-emerald-50 text-emerald-700", blue: "bg-blue-50 text-blue-700", amber: "bg-amber-50 text-amber-700" };
-  return <div className="rounded-2xl border border-gray-100 bg-white p-5 shadow-sm"><div className="flex items-center justify-between"><p className="text-xs font-bold uppercase tracking-wide text-gray-500">{label}</p><span className={`flex h-9 w-9 items-center justify-center rounded-xl ${tones[tone]}`}>{icon}</span></div><p className="mt-3 text-3xl font-black text-gray-900">{value}</p></div>;
+function UserMetric({ label, value, tone }: { label: string; value: number; tone: "green" | "blue" | "amber" }) {
+  const tones = {
+    green: "border-l-4 border-l-emerald-500",
+    blue: "border-l-4 border-l-blue-500",
+    amber: "border-l-4 border-l-amber-500",
+  };
+  return (
+    <div className={`flex flex-col justify-between rounded-2xl border border-gray-100 bg-white p-3.5 sm:p-5 shadow-xs transition hover:shadow-sm ${tones[tone]}`}>
+      <p className="text-[10px] sm:text-xs font-bold uppercase tracking-wider text-gray-500 leading-tight">{label}</p>
+      <p className="mt-2 sm:mt-3 text-xl sm:text-3xl font-black text-gray-900 leading-none">{value}</p>
+    </div>
+  );
 }

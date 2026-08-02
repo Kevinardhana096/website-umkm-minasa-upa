@@ -56,7 +56,9 @@ npm run create:admin
 
 Script bersifat idempotent: jika email sudah ada, password tidak diubah; user dikonfirmasi dan profile-nya diatur menjadi role `admin`. Password hanya dipakai saat membuat user baru.
 
-Setelah login sebagai admin, halaman `/admin` menyediakan monitoring toko dan produk secara menyeluruh, serta menu **Manajemen user** untuk membuat user toko/admin, mengubah role, menonaktifkan atau mengaktifkan akses login, dan mereset password. Fitur manajemen user memakai `SUPABASE_SERVICE_ROLE_KEY` di Route Handler server; tambahkan key tersebut ke `.env.local` saat development atau ke Environment Variables Vercel (tanpa awalan `NEXT_PUBLIC_`) bila fitur ini dipakai di production. Jangan pernah mengekspos atau memasukkan key tersebut ke kode browser.
+Setelah login sebagai admin, halaman `/admin` menyediakan monitoring toko dan produk secara menyeluruh, edit profil toko lintas toko, edit/hapus produk lintas toko, serta menu **Manajemen user** untuk membuat user toko/admin, mengubah role, menonaktifkan atau mengaktifkan akses login, dan mereset password. Fitur mutation admin memakai `SUPABASE_SERVICE_ROLE_KEY` di Route Handler server; tambahkan key tersebut ke `.env.local` saat development atau ke Environment Variables Vercel (tanpa awalan `NEXT_PUBLIC_`) bila fitur ini dipakai di production. Jangan pernah mengekspos atau memasukkan key tersebut ke kode browser.
+
+Pada dashboard toko, menu **Pengaturan Toko** dapat digunakan untuk mengubah nama usaha, nama pengelola, deskripsi, nomor WhatsApp, dan status tampil toko di katalog publik.
 
 Pada development lokal, kartu **Dev Access** di halaman login dapat memakai akun ini sebagai shortcut. Tambahkan `DEV_ACCESS_EMAIL` dan `DEV_ACCESS_PASSWORD` di `.env.local`, lalu restart `npm run dev`. Endpoint shortcut hanya aktif ketika `NODE_ENV=development` dan tidak tersedia pada deployment production.
 
