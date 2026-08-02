@@ -99,9 +99,9 @@ export const FloatingChatWidget = forwardRef<FloatingChatWidgetRef, FloatingChat
   };
 
   return (
-    <div className="fixed bottom-6 right-6 z-50">
+    <div className="fixed bottom-4 right-4 sm:bottom-6 sm:right-6 z-50">
       {isOpen && (
-        <div className="absolute bottom-16 right-0 flex h-[460px] w-[88vw] flex-col overflow-hidden rounded-2xl border border-gray-200 bg-white shadow-2xl sm:w-96">
+        <div className="fixed bottom-20 right-4 left-4 z-50 flex h-[440px] max-h-[75vh] flex-col overflow-hidden rounded-2xl border border-gray-200 bg-white shadow-2xl sm:absolute sm:bottom-16 sm:right-0 sm:left-auto sm:h-[460px] sm:w-96">
           <div className="flex items-center justify-between bg-[#963E1B] p-4 text-white">
             <div className="flex items-center gap-2.5">
               <div className="flex h-8 w-8 items-center justify-center rounded-full bg-white/20"><Bot className="h-5 w-5" /></div>
@@ -113,7 +113,7 @@ export const FloatingChatWidget = forwardRef<FloatingChatWidgetRef, FloatingChat
           <div className="flex-1 space-y-3 overflow-y-auto bg-gray-50/50 p-4">
             {messages.map((message, index) => (
               <div key={`${message.sender}-${index}`} className={`flex ${message.sender === 'user' ? 'justify-end' : 'justify-start'}`}>
-                <div className={`max-w-[82%] rounded-2xl px-3.5 py-2.5 text-xs leading-relaxed ${message.sender === 'user' ? 'rounded-br-none bg-[#0F2C23] text-white' : 'rounded-bl-none border border-gray-200 bg-white text-gray-800 shadow-sm'}`}>
+                <div className={`max-w-[85%] sm:max-w-[82%] rounded-2xl px-3.5 py-2.5 text-xs leading-relaxed ${message.sender === 'user' ? 'rounded-br-none bg-[#0F2C23] text-white' : 'rounded-bl-none border border-gray-200 bg-white text-gray-800 shadow-sm'}`}>
                   <p>{message.text}</p>
                   {message.whatsappUrl && <a href={message.whatsappUrl} target="_blank" rel="noreferrer" className="mt-2 inline-flex rounded-lg bg-[#25D366] px-2.5 py-1.5 text-[11px] font-bold text-white hover:bg-[#1ebe5d]">Chat penjual di WhatsApp</a>}
                 </div>
@@ -128,8 +128,8 @@ export const FloatingChatWidget = forwardRef<FloatingChatWidgetRef, FloatingChat
         </div>
       )}
 
-      <button onClick={() => setIsOpen((open) => !open)} className="group flex h-14 w-14 items-center justify-center rounded-full bg-[#963E1B] text-white shadow-xl transition-all hover:bg-[#803214] active:scale-95" aria-label="Buka chat">
-        {isOpen ? <X className="h-6 w-6" /> : <MessageSquareText className="h-6 w-6 transition-transform group-hover:scale-110" />}
+      <button onClick={() => setIsOpen((open) => !open)} className="group flex h-12 w-12 sm:h-14 sm:w-14 items-center justify-center rounded-full bg-[#963E1B] text-white shadow-xl transition-all hover:bg-[#803214] active:scale-95" aria-label="Buka chat">
+        {isOpen ? <X className="h-5 w-5 sm:h-6 sm:w-6" /> : <MessageSquareText className="h-5 w-5 sm:h-6 sm:w-6 transition-transform group-hover:scale-110" />}
       </button>
     </div>
   );
