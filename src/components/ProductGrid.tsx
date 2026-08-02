@@ -12,7 +12,7 @@ interface ProductGridProps {
 
 export const ProductGrid: React.FC<ProductGridProps> = ({ products, onDetailClick }) => {
   const [currentPage, setCurrentPage] = useState(1);
-  const itemsPerPage = 6;
+  const itemsPerPage = 8;
 
   const totalPages = Math.ceil(products.length / itemsPerPage) || 1;
   const startIndex = (currentPage - 1) * itemsPerPage;
@@ -42,8 +42,8 @@ export const ProductGrid: React.FC<ProductGridProps> = ({ products, onDetailClic
 
   return (
     <div id="catalog" className="my-8">
-      {/* 3-Column Responsive Grid */}
-      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4 sm:gap-6">
+      {/* Responsive Grid: 2-Column Mobile, 3-Column Tablet, 4-Column Laptop/Desktop */}
+      <div className="grid grid-cols-2 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-2.5 sm:gap-4 md:gap-5">
         {currentProducts.map((product) => (
           <ProductCard
             key={product.id}
