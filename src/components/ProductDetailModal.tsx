@@ -62,11 +62,10 @@ export const ProductDetailModal: React.FC<ProductDetailModalProps> = ({
   );
   const waUrl = `https://wa.me/${product.whatsappNumber}?text=${waMessage}`;
 
-  const galleryImages = [
-    product.imageUrl ?? '/logo_umkm.png',
-    product.imageUrl ?? '/logo_umkm.png',
-    product.imageUrl ?? '/logo_umkm.png',
-  ];
+  const galleryImages = product.imageUrls?.length
+    ? product.imageUrls
+    : [product.imageUrl ?? '/logo_umkm.png'];
+  const activeIndex = Math.min(activeImageIndex, galleryImages.length - 1);
 
   return (
     <>
@@ -78,7 +77,7 @@ export const ProductDetailModal: React.FC<ProductDetailModalProps> = ({
         >
           <div className="relative max-w-4xl max-h-[90vh] w-full flex items-center justify-center">
             <Image
-              src={galleryImages[activeImageIndex]}
+              src={galleryImages[activeIndex]}
               alt={product.name}
               width={1200}
               height={1200}
@@ -120,7 +119,7 @@ export const ProductDetailModal: React.FC<ProductDetailModalProps> = ({
             {/* Main Stage Image */}
             <div className="relative w-full aspect-square rounded-2xl overflow-hidden bg-white shadow-sm border border-gray-100 group">
               <Image
-                src={galleryImages[activeImageIndex]}
+                src={galleryImages[activeIndex]}
                 alt={product.name}
                 fill
                 unoptimized
@@ -173,7 +172,7 @@ export const ProductDetailModal: React.FC<ProductDetailModalProps> = ({
                   key={idx}
                   onClick={() => setActiveImageIndex(idx)}
                   className={`relative w-14 h-14 rounded-xl overflow-hidden border-2 transition-all duration-200 cursor-pointer ${
-                    activeImageIndex === idx
+                    activeIndex === idx
                       ? 'border-[#963E1B] ring-2 ring-[#963E1B]/20 scale-105'
                       : 'border-transparent opacity-60 hover:opacity-100 hover:border-gray-300'
                   }`}
@@ -302,24 +301,24 @@ export const ProductDetailModal: React.FC<ProductDetailModalProps> = ({
 
             </div>
 
-            {/* CTAs Footer */}
-            <div className="mt-8 pt-4 border-t border-gray-100 flex items-center gap-3">
+            {/* CTAs Footer - Sticky on Mobile */}
+            <div className="sticky bottom-0 bg-white/95 backdrop-blur-md mt-6 pt-3 pb-2 -mx-6 px-6 md:mx-0 md:px-0 md:pt-4 border-t border-gray-100 flex items-center gap-2 sm:gap-3 z-30 shadow-xs md:shadow-none">
               <button
                 onClick={() => { if (onAskBot) onAskBot(product); onClose(); }}
-                className="flex-1 py-3.5 px-4 rounded-2xl border border-gray-200 bg-gray-50 hover:bg-gray-100 font-semibold text-gray-800 text-xs sm:text-sm flex items-center justify-center gap-2 transition-all duration-200 hover:shadow-sm cursor-pointer"
+                className="flex-1 py-3 sm:py-3.5 px-3 sm:px-4 rounded-xl sm:rounded-2xl border border-gray-200 bg-gray-50 hover:bg-gray-100 font-semibold text-gray-800 text-xs sm:text-sm flex items-center justify-center gap-1.5 sm:gap-2 transition-all duration-200 hover:shadow-sm cursor-pointer"
               >
-                <Bot className="w-4 h-4 text-[#963E1B]" />
-                <span>Tanya AI Assistant</span>
+                <Bot className="w-4 h-4 text-[#963E1B] shrink-0" />
+                <span className="truncate">Tanya AI</span>
               </button>
               
               <a
                 href={waUrl}
                 target="_blank"
                 rel="noopener noreferrer"
-                className="flex-[1.2] py-3.5 px-4 rounded-2xl bg-[#06281E] hover:bg-[#0b3d2f] text-white font-bold text-xs sm:text-sm flex items-center justify-center gap-2 shadow-md hover:shadow-lg transition-all duration-200 hover:scale-[1.02] active:scale-[0.98]"
+                className="flex-[1.3] py-3 sm:py-3.5 px-3 sm:px-4 rounded-xl sm:rounded-2xl bg-[#06281E] hover:bg-[#0b3d2f] text-white font-bold text-xs sm:text-sm flex items-center justify-center gap-1.5 sm:gap-2 shadow-md hover:shadow-lg transition-all duration-200 hover:scale-[1.02] active:scale-[0.98]"
               >
-                <MessageSquare className="w-4 h-4" />
-                <span>Pesan via WhatsApp</span>
+                <MessageSquare className="w-4 h-4 shrink-0" />
+                <span className="truncate">Pesan via WA</span>
               </a>
             </div>
 

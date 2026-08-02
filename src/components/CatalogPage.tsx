@@ -122,6 +122,7 @@ export const CatalogPage: React.FC<CatalogPageProps> = ({
 
       {/* Product Detail Modal */}
       <ProductDetailModal
+        key={selectedProduct?.id ?? "closed"}
         product={selectedProduct}
         onClose={() => setSelectedProduct(null)}
         onAskBot={handleAskBot}

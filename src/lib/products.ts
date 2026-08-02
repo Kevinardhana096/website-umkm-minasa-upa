@@ -1,16 +1,50 @@
 import type { Product } from "@/types/product";
 
+export const MAX_PRODUCT_IMAGES = 5;
+
 export interface ProductRow {
   id: string;
   store_id: string;
   name: string;
   description: string;
   image_path: string | null;
+  product_images: ProductImageRow[];
   price: number | string | null;
   is_available: boolean;
   is_visible: boolean;
   created_at: string;
   updated_at: string;
+}
+
+export interface ProductImageRow {
+  id: string;
+  product_id: string;
+  image_path: string;
+  sort_order: number;
+  is_primary: boolean;
+  created_at: string;
+  updated_at: string;
+}
+
+export interface ProductQueryRow extends Omit<ProductRow, "product_images"> {
+  product_images: ProductImageRow[] | null;
+}
+
+export const PRODUCT_SELECT = "id, store_id, name, description, image_path, price, is_available, is_visible, created_at, updated_at, product_images(id, product_id, image_path, sort_order, is_primary, created_at, updated_at)";
+
+export function normalizeProductRow(row: ProductQueryRow): ProductRow {
+  const images = [...(row.product_images ?? [])].sort((a, b) => a.sort_order - b.sort_order);
+  const primaryImage = images.find((image) => image.is_primary) ?? images[0];
+
+  return {
+    ...row,
+    image_path: primaryImage?.image_path ?? row.image_path,
+    product_images: images,
+  };
+}
+
+export function normalizeProductRows(rows: ProductQueryRow[] | null | undefined) {
+  return (rows ?? []).map(normalizeProductRow);
 }
 
 export interface StoreRow {
@@ -49,6 +83,13 @@ export function mapProductRow(
   store: StoreRow,
   supabaseUrl?: string,
 ): Product {
+  const imagePaths = row.product_images.length > 0
+    ? row.product_images.map((image) => image.image_path)
+    : row.image_path ? [row.image_path] : [];
+  const imageUrls = imagePaths
+    .map((imagePath) => toPublicImageUrl(imagePath, supabaseUrl))
+    .filter((imageUrl): imageUrl is string => Boolean(imageUrl));
+
   return {
     id: row.id,
     name: row.name,
@@ -61,7 +102,8 @@ export function mapProductRow(
     price: row.price === null ? null : Number(row.price),
     stock: row.is_available ? undefined : 0,
     isVerified: store.is_active,
-    imageUrl: toPublicImageUrl(row.image_path, supabaseUrl),
+    imageUrl: imageUrls[0],
+    imageUrls,
     whatsappNumber: store.whatsapp_number,
     isAvailable: row.is_available,
     isVisible: row.is_visible,

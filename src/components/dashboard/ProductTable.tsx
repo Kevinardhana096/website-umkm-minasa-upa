@@ -96,6 +96,9 @@ export function ProductTable({
                           <p className="mt-0.5 line-clamp-1 text-xs text-gray-500 font-medium">
                             {product.description || "Tanpa deskripsi"}
                           </p>
+                          {product.product_images.length > 1 && (
+                            <p className="mt-1 text-[11px] font-bold text-[#963E1B]">{product.product_images.length} foto galeri</p>
+                          )}
                         </div>
                       </div>
                     </td>

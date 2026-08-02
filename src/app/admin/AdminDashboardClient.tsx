@@ -102,10 +102,16 @@ export function AdminDashboardClient({ initialData }: AdminDashboardClientProps)
       formData.append("name", input.name);
       formData.append("description", input.description);
       formData.append("price", input.price === null ? "" : String(input.price));
-      formData.append("image_path", input.imagePath ?? "");
       formData.append("is_available", String(input.isAvailable));
       formData.append("is_visible", String(input.isVisible));
-      if (input.imageFile) formData.append("image_file", input.imageFile);
+      formData.append("images", JSON.stringify((input.images ?? []).map((image) => ({
+        id: image.id,
+        image_path: image.imagePath,
+        is_primary: image.isPrimary === true,
+      }))));
+      (input.images ?? []).forEach((image, index) => {
+        if (image.imageFile) formData.append(`image_file_${index}`, image.imageFile);
+      });
 
       const response = await fetch("/api/admin/catalog", { method: "PATCH", body: formData });
       const payload = await response.json().catch(() => ({}));

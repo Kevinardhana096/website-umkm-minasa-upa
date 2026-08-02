@@ -1,5 +1,5 @@
 import { createClient } from "@/lib/supabase/server";
-import { mapProductRow, type CatalogStore, type ProductRow, type StoreRow } from "@/lib/products";
+import { mapProductRow, normalizeProductRows, PRODUCT_SELECT, type CatalogStore, type ProductQueryRow, type StoreRow } from "@/lib/products";
 import type { Product } from "@/types/product";
 
 export interface PublicCatalogData {
@@ -27,18 +27,16 @@ export async function getPublicCatalog(): Promise<PublicCatalogData | null> {
 
     const { data: rows, error: productError } = await supabase
       .from("products")
-      .select(
-        "id, store_id, name, description, image_path, price, is_available, is_visible, created_at, updated_at",
-      )
+      .select(PRODUCT_SELECT)
       .in("store_id", stores.map((store) => store.id))
       .eq("is_visible", true)
       .order("created_at", { ascending: false })
-      .returns<ProductRow[]>();
+      .returns<ProductQueryRow[]>();
 
     if (productError) throw productError;
 
     return {
-      products: (rows ?? []).flatMap((row) => {
+      products: normalizeProductRows(rows).flatMap((row) => {
         const store = stores.find((item) => item.id === row.store_id);
         return store ? [mapProductRow(row, store, supabaseUrl)] : [];
       }),

@@ -28,9 +28,10 @@ You can start editing the page by modifying `src/app/page.tsx`. The page auto-up
 4. Jalankan isi `supabase/schema.sql` di Supabase SQL Editor.
 5. Jalankan isi `supabase/admin-dashboard.sql` setelah akun admin tersedia agar admin dapat membaca seluruh toko dan produk.
 6. Jalankan isi `supabase/role-hardening.sql` agar hanya role `toko` yang dapat membuat atau mengubah toko, produk, dan foto.
-7. Jalankan isi `supabase/admin-audit.sql` untuk menyimpan jejak edit/hapus katalog oleh admin.
-8. Aktifkan Email provider pada Authentication → Providers untuk login email/password.
-9. Pada Authentication → Providers → Email, nonaktifkan **Allow new users to sign up** dan **Confirm Email**. Akun toko hanya dibuat oleh pengelola melalui proses internal dan dapat login tanpa verifikasi email.
+7. Jalankan isi `supabase/product-gallery.sql` untuk mengaktifkan galeri multi-gambar dan melakukan backfill gambar lama.
+8. Jalankan isi `supabase/admin-audit.sql` untuk menyimpan jejak edit/hapus katalog oleh admin.
+9. Aktifkan Email provider pada Authentication → Providers untuk login email/password.
+10. Pada Authentication → Providers → Email, nonaktifkan **Allow new users to sign up** dan **Confirm Email**. Akun toko hanya dibuat oleh pengelola melalui proses internal dan dapat login tanpa verifikasi email.
 
 Pada Authentication → URL Configuration, tambahkan `http://localhost:3000/auth/callback` ke Redirect URLs. Untuk production, tambahkan juga URL domain production dengan path yang sama. Alur lupa kata sandi memakai callback `/auth/callback` lalu mengarahkan pengguna ke `/reset-password`.
 

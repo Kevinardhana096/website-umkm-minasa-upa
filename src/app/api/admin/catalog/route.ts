@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
 import { createClient as createSupabaseClient } from "@supabase/supabase-js";
 import { createClient } from "@/lib/supabase/server";
+import { MAX_PRODUCT_IMAGES, normalizeProductRow, normalizeProductRows, PRODUCT_SELECT, type ProductImageRow, type ProductQueryRow } from "@/lib/products";
 
 export const dynamic = "force-dynamic";
 
@@ -94,6 +95,159 @@ function getImageExtension(file: File) {
   return extensions[file.type] ?? "bin";
 }
 
+interface AdminImageDraft {
+  id?: string;
+  imagePath?: string;
+  imageFile?: File;
+  isPrimary?: boolean;
+}
+
+function parseImageDrafts(formData: FormData) {
+  const imagesInput = getString(formData.get("images") ?? undefined);
+  if (!imagesInput) {
+    const legacyFile = formData.get("image_file");
+    return [{
+      imagePath: getString(formData.get("image_path") ?? undefined) || undefined,
+      imageFile: legacyFile instanceof File && legacyFile.size > 0 ? legacyFile : undefined,
+      isPrimary: true,
+    } satisfies AdminImageDraft];
+  }
+
+  let imageMetadata: Array<{ id?: unknown; image_path?: unknown; is_primary?: unknown }>;
+  try {
+    imageMetadata = JSON.parse(imagesInput) as Array<{ id?: unknown; image_path?: unknown; is_primary?: unknown }>;
+  } catch {
+    throw new Error("Format galeri foto tidak valid.");
+  }
+  if (!Array.isArray(imageMetadata)) throw new Error("Format galeri foto tidak valid.");
+
+  return imageMetadata.map((image, index) => {
+    const file = formData.get(`image_file_${index}`);
+    return {
+      id: typeof image.id === "string" ? image.id : undefined,
+      imagePath: typeof image.image_path === "string" ? image.image_path.trim() : undefined,
+      imageFile: file instanceof File && file.size > 0 ? file : undefined,
+      isPrimary: image.is_primary === true,
+    } satisfies AdminImageDraft;
+  });
+}
+
+async function resolveAdminImages(
+  serviceClient: NonNullable<ReturnType<typeof getServiceClient>>,
+  ownerId: string,
+  drafts: AdminImageDraft[],
+  existingProduct: ProductQueryRow,
+) {
+  if (drafts.length > MAX_PRODUCT_IMAGES) {
+    throw new Error(`Maksimal ${MAX_PRODUCT_IMAGES} foto per produk.`);
+  }
+
+  const existing = normalizeProductRow(existingProduct);
+  const existingById = new Map(existing.product_images.map((image) => [image.id, image]));
+  const uploadedPaths: string[] = [];
+  const resolved: Array<{ id?: string; imagePath: string; isPrimary: boolean; sortOrder: number }> = [];
+  const seenPaths = new Set<string>();
+
+  try {
+    for (const [index, draft] of drafts.entries()) {
+      let imagePath = draft.imagePath ?? "";
+      if (draft.imageFile) {
+        if (draft.id) throw new Error("Foto lama tidak dapat diganti langsung; hapus lalu tambahkan foto baru.");
+        if (!["image/jpeg", "image/png", "image/webp"].includes(draft.imageFile.type)) {
+          throw new Error("Format foto harus JPG, PNG, atau WebP.");
+        }
+        if (draft.imageFile.size > 5 * 1024 * 1024) throw new Error("Ukuran setiap foto maksimal 5 MB.");
+
+        const path = `${ownerId}/${crypto.randomUUID()}.${getImageExtension(draft.imageFile)}`;
+        const { error } = await serviceClient.storage.from("product-images").upload(path, draft.imageFile, {
+          contentType: draft.imageFile.type,
+          upsert: false,
+        });
+        if (error) throw new Error("Foto produk gagal diunggah.");
+        imagePath = path;
+        uploadedPaths.push(path);
+      } else if (draft.id) {
+        const existingImage = existingById.get(draft.id);
+        if (!existingImage) throw new Error("Referensi foto produk tidak valid.");
+        if (imagePath && imagePath !== existingImage.image_path) throw new Error("Path foto produk tidak valid.");
+        imagePath = existingImage.image_path;
+      } else if (imagePath && isInternalImagePath(imagePath)) {
+        if (existing.image_path !== imagePath) throw new Error("Path Storage foto produk tidak valid.");
+      }
+
+      if (!imagePath) throw new Error("Setiap foto produk harus berupa URL atau file gambar.");
+      if (seenPaths.has(imagePath)) throw new Error("Foto yang sama tidak boleh ditambahkan dua kali.");
+      seenPaths.add(imagePath);
+      resolved.push({ id: draft.id, imagePath, isPrimary: draft.isPrimary === true, sortOrder: index });
+    }
+  } catch (error) {
+    if (uploadedPaths.length > 0) await serviceClient.storage.from("product-images").remove(uploadedPaths).catch(() => undefined);
+    throw error;
+  }
+
+  if (resolved.length > 0 && !resolved.some((image) => image.isPrimary)) resolved[0].isPrimary = true;
+  return { existing, resolved, uploadedPaths };
+}
+
+async function persistAdminImages(
+  serviceClient: NonNullable<ReturnType<typeof getServiceClient>>,
+  productId: string,
+  existingProduct: ProductQueryRow,
+  images: Array<{ id?: string; imagePath: string; isPrimary: boolean; sortOrder: number }>,
+) {
+  const existing = normalizeProductRow(existingProduct);
+  const desiredIds = new Set(images.map((image) => image.id).filter((id): id is string => Boolean(id)));
+  const removedImages = existing.product_images.filter((image) => !desiredIds.has(image.id));
+
+  if (removedImages.length > 0) {
+    const { error } = await serviceClient.from("product_images").delete().in("id", removedImages.map((image) => image.id));
+    if (error) throw error;
+  }
+  if (existing.product_images.length > 0) {
+    const { error } = await serviceClient.from("product_images").update({ is_primary: false }).eq("product_id", productId);
+    if (error) throw error;
+  }
+
+  const retainedImages = images.filter((image) => image.id);
+  for (const [index, image] of retainedImages.entries()) {
+    const { error } = await serviceClient.from("product_images").update({ image_path: image.imagePath, sort_order: 10000 + index, is_primary: false }).eq("id", image.id).eq("product_id", productId);
+    if (error) throw error;
+  }
+
+  const newImages = images.filter((image) => !image.id);
+  let insertedImages: ProductImageRow[] = [];
+  if (newImages.length > 0) {
+    const { data, error } = await serviceClient
+      .from("product_images")
+      .insert(newImages.map((image) => ({ product_id: productId, image_path: image.imagePath, sort_order: 1000 + image.sortOrder, is_primary: false })))
+      .select("id, product_id, image_path, sort_order, is_primary, created_at, updated_at")
+      .returns<ProductImageRow[]>();
+    if (error) throw error;
+    insertedImages = data ?? [];
+  }
+
+  const imageIdsByPath = new Map<string, string>([
+    ...retainedImages.map((image) => [image.imagePath, image.id as string] as const),
+    ...insertedImages.map((image) => [image.image_path, image.id] as const),
+  ]);
+  for (const image of images) {
+    const imageId = imageIdsByPath.get(image.imagePath);
+    if (!imageId) throw new Error("Foto produk gagal disimpan.");
+    const { error } = await serviceClient.from("product_images").update({ sort_order: image.sortOrder, is_primary: false }).eq("id", imageId).eq("product_id", productId);
+    if (error) throw error;
+  }
+
+  const primaryImage = images.find((image) => image.isPrimary);
+  if (primaryImage) {
+    const primaryId = imageIdsByPath.get(primaryImage.imagePath);
+    if (!primaryId) throw new Error("Foto utama produk gagal ditentukan.");
+    const { error } = await serviceClient.from("product_images").update({ is_primary: true }).eq("id", primaryId).eq("product_id", productId);
+    if (error) throw error;
+  }
+
+  return { removedPaths: removedImages.map((image) => image.image_path), primaryPath: primaryImage?.imagePath ?? null };
+}
+
 async function updateProduct(
   request: Request,
   serviceClient: NonNullable<ReturnType<typeof getServiceClient>>,
@@ -107,7 +261,6 @@ async function updateProduct(
   const productId = getString(formData.get("id") ?? undefined);
   const name = getString(formData.get("name") ?? undefined);
   const description = getString(formData.get("description") ?? undefined);
-  const imagePathInput = getString(formData.get("image_path") ?? undefined);
   const priceInput = getString(formData.get("price") ?? undefined);
   const isAvailableInput = getString(formData.get("is_available") ?? undefined);
   const isVisibleInput = getString(formData.get("is_visible") ?? undefined);
@@ -130,75 +283,70 @@ async function updateProduct(
 
   const { data: existingProduct, error: existingError } = await serviceClient
     .from("products")
-    .select("id, image_path")
+    .select(PRODUCT_SELECT)
     .eq("id", productId)
-    .maybeSingle<{ id: string; image_path: string | null }>();
+    .maybeSingle<ProductQueryRow>();
   if (existingError) return jsonError("Data produk gagal dimuat.", 500);
   if (!existingProduct) return jsonError("Produk tidak ditemukan.", 404);
 
-  let imagePath = imagePathInput || null;
-  let uploadedImagePath: string | null = null;
-  const imageFile = formData.get("image_file");
-  if (imageFile instanceof File && imageFile.size > 0) {
-    if (!["image/jpeg", "image/png", "image/webp"].includes(imageFile.type)) {
-      return jsonError("Format foto harus JPG, PNG, atau WebP.", 400);
-    }
-    if (imageFile.size > 5 * 1024 * 1024) {
-      return jsonError("Ukuran foto maksimal 5 MB.", 400);
-    }
-
-    const { data: productOwner, error: ownerError } = await serviceClient
-      .from("products")
-      .select("store_id, stores(owner_id)")
-      .eq("id", productId)
-      .maybeSingle<{ store_id: string; stores: { owner_id: string } | null }>();
-    if (ownerError || !productOwner?.stores?.owner_id) {
-      return jsonError("Pemilik toko produk tidak ditemukan.", 500);
-    }
-
-    uploadedImagePath = `${productOwner.stores.owner_id}/${crypto.randomUUID()}.${getImageExtension(imageFile)}`;
-    const { error: uploadError } = await serviceClient.storage.from("product-images").upload(uploadedImagePath, imageFile, {
-      contentType: imageFile.type,
-      upsert: false,
-    });
-    if (uploadError) return jsonError("Foto produk gagal diunggah.", 500);
-    imagePath = uploadedImagePath;
-  }
-
-  const { data, error } = await serviceClient
+  const { data: productOwner, error: ownerError } = await serviceClient
     .from("products")
-    .update({
+    .select("store_id, stores(owner_id)")
+    .eq("id", productId)
+    .maybeSingle<{ store_id: string; stores: { owner_id: string } | null }>();
+  if (ownerError || !productOwner?.stores?.owner_id) return jsonError("Pemilik toko produk tidak ditemukan.", 500);
+
+  let galleryPersisted = false;
+  let uploadedPaths: string[] = [];
+  try {
+    const imageResult = await resolveAdminImages(serviceClient, productOwner.stores.owner_id, parseImageDrafts(formData), existingProduct);
+    uploadedPaths = imageResult.uploadedPaths;
+    const { removedPaths, primaryPath } = await persistAdminImages(serviceClient, productId, existingProduct, imageResult.resolved);
+    galleryPersisted = true;
+
+    const { error } = await serviceClient
+      .from("products")
+      .update({
+        name,
+        description,
+        price,
+        image_path: primaryPath,
+        is_available: isAvailable,
+        is_visible: isVisible,
+      })
+      .eq("id", productId);
+    if (error) return jsonError("Produk gagal diperbarui.", 500);
+
+    const retainedPaths = new Set(imageResult.resolved.map((image) => image.imagePath));
+    await Promise.all([...removedPaths, ...(existingProduct.image_path && !retainedPaths.has(existingProduct.image_path) ? [existingProduct.image_path] : [])]
+      .filter((path, index, paths) => paths.indexOf(path) === index)
+      .map((path) => removeProductImage(serviceClient, path).catch((cleanupError) => {
+        console.error("Failed to remove replaced product image", cleanupError);
+      })));
+
+    const { data, error: updatedError } = await serviceClient
+      .from("products")
+      .select(PRODUCT_SELECT)
+      .eq("id", productId)
+      .single<ProductQueryRow>();
+    if (updatedError) return jsonError("Produk gagal dimuat setelah diperbarui.", 500);
+
+    await recordAdminAudit(serviceClient, adminId, "update", "product", productId, {
       name,
-      description,
-      price,
-      image_path: imagePath,
+      store_id: data.store_id,
+      image_count: imageResult.resolved.length,
+      image_changed: existingProduct.image_path !== primaryPath || imageResult.resolved.length !== imageResult.existing.product_images.length,
       is_available: isAvailable,
       is_visible: isVisible,
-    })
-    .eq("id", productId)
-    .select("id, store_id, name, description, image_path, price, is_available, is_visible, created_at, updated_at")
-    .single();
-
-  if (error) {
-    if (uploadedImagePath) await removeProductImage(serviceClient, uploadedImagePath).catch(() => undefined);
-    return jsonError("Produk gagal diperbarui.", 500);
-  }
-
-  if (existingProduct.image_path && existingProduct.image_path !== imagePath) {
-    await removeProductImage(serviceClient, existingProduct.image_path).catch((cleanupError) => {
-      console.error("Failed to remove replaced product image", cleanupError);
     });
+
+    return NextResponse.json({ product: normalizeProductRow(data) });
+  } catch (error) {
+    if (!galleryPersisted && uploadedPaths.length > 0) {
+      await serviceClient.storage.from("product-images").remove(uploadedPaths).catch(() => undefined);
+    }
+    throw error;
   }
-
-  await recordAdminAudit(serviceClient, adminId, "update", "product", productId, {
-    name,
-    store_id: data.store_id,
-    image_changed: existingProduct.image_path !== imagePath,
-    is_available: isAvailable,
-    is_visible: isVisible,
-  });
-
-  return NextResponse.json({ product: data });
 }
 
 async function updateStore(
@@ -289,19 +437,23 @@ export async function DELETE(request: Request) {
 
   try {
     if (resource === "product") {
-      const { data: product, error: productError } = await serviceClient
+      const { data: productData, error: productError } = await serviceClient
         .from("products")
-        .select("id, image_path")
+        .select(PRODUCT_SELECT)
         .eq("id", id)
-        .maybeSingle<{ id: string; image_path: string | null }>();
+        .maybeSingle<ProductQueryRow>();
       if (productError) return jsonError("Data produk gagal dimuat.", 500);
-      if (!product) return jsonError("Produk tidak ditemukan.", 404);
+      if (!productData) return jsonError("Produk tidak ditemukan.", 404);
+      const product = normalizeProductRow(productData);
 
       const { error } = await serviceClient.from("products").delete().eq("id", id);
       if (error) return jsonError("Produk gagal dihapus.", 500);
-      await removeProductImage(serviceClient, product.image_path).catch((cleanupError) => {
+      await Promise.all([
+        ...product.product_images.map((image) => removeProductImage(serviceClient, image.image_path)),
+        ...(product.image_path ? [removeProductImage(serviceClient, product.image_path)] : []),
+      ].map((cleanupTask) => cleanupTask.catch((cleanupError) => {
         console.error("Failed to remove deleted product image", cleanupError);
-      });
+      })));
       await recordAdminAudit(serviceClient, admin.userId, "delete", "product", id, {});
       return NextResponse.json({ ok: true });
     }
@@ -314,17 +466,21 @@ export async function DELETE(request: Request) {
     if (storeError) return jsonError("Data toko gagal dimuat.", 500);
     if (!store) return jsonError("Toko tidak ditemukan.", 404);
 
-    const { data: products, error: productsError } = await serviceClient
+    const { data: productsData, error: productsError } = await serviceClient
       .from("products")
-      .select("image_path")
+      .select(PRODUCT_SELECT)
       .eq("store_id", id)
-      .returns<{ image_path: string | null }[]>();
+      .returns<ProductQueryRow[]>();
     if (productsError) return jsonError("Produk toko gagal dimuat.", 500);
+    const products = normalizeProductRows(productsData);
 
     const { error } = await serviceClient.from("stores").delete().eq("id", id);
     if (error) return jsonError("Toko gagal dihapus.", 500);
 
-    await Promise.all((products ?? []).map((product) => removeProductImage(serviceClient, product.image_path).catch((cleanupError) => {
+    await Promise.all((products ?? []).flatMap((product) => [
+      ...product.product_images.map((image) => removeProductImage(serviceClient, image.image_path)),
+      ...(product.image_path ? [removeProductImage(serviceClient, product.image_path)] : []),
+    ]).map((cleanupTask) => cleanupTask.catch((cleanupError) => {
       console.error("Failed to remove deleted store product image", cleanupError);
     })));
     await recordAdminAudit(serviceClient, admin.userId, "delete", "store", id, {

@@ -257,7 +257,7 @@ export function StoreDashboard({ onBackToCatalog, onSignOut }: StoreDashboardPro
       </main>
 
       <ProductFormModal
-        key={editingProduct?.id ?? "new"}
+        key={`${editingProduct?.id ?? "new"}-${isAddModalOpen ? "open" : "closed"}`}
         product={editingProduct}
         isOpen={isAddModalOpen}
         isSaving={isSaving}

@@ -1,4 +1,5 @@
 import { createClient } from "@/lib/supabase/server";
+import { normalizeProductRows, PRODUCT_SELECT, type ProductImageRow, type ProductQueryRow } from "@/lib/products";
 
 export interface AdminStoreRow {
   id: string;
@@ -12,18 +13,7 @@ export interface AdminStoreRow {
   updated_at: string;
 }
 
-interface AdminProductRow {
-  id: string;
-  store_id: string;
-  name: string;
-  description: string;
-  image_path: string | null;
-  price: number | string | null;
-  is_available: boolean;
-  is_visible: boolean;
-  created_at: string;
-  updated_at: string;
-}
+type AdminProductRow = ProductQueryRow;
 
 export interface AdminStoreSummary extends AdminStoreRow {
   product_count: number;
@@ -44,6 +34,7 @@ export interface AdminProductSummary {
   name: string;
   description: string;
   image_path: string | null;
+  product_images: ProductImageRow[];
   price: number | string | null;
   is_available: boolean;
   is_visible: boolean;
@@ -61,7 +52,7 @@ export async function getAdminMonitoringData(): Promise<AdminMonitoringData> {
       .returns<AdminStoreRow[]>(),
     supabase
       .from("products")
-      .select("id, store_id, name, description, image_path, price, is_available, is_visible, created_at, updated_at")
+      .select(PRODUCT_SELECT)
       .returns<AdminProductRow[]>(),
   ]);
 
@@ -90,7 +81,7 @@ export async function getAdminMonitoringData(): Promise<AdminMonitoringData> {
         available_product_count: storeCounts.available,
       };
     }),
-    products: (productsResult.data ?? [])
+    products: normalizeProductRows(productsResult.data)
       .map((product) => {
         const store = storeById.get(product.store_id);
         if (!store) return null;

@@ -15,6 +15,7 @@ export interface Product {
   preOrderDays?: number;
   isVerified?: boolean;
   imageUrl?: string;
+  imageUrls?: string[];
   whatsappNumber: string;
   isAvailable?: boolean;
   isVisible?: boolean;
