@@ -75,8 +75,21 @@ export async function getCurrentStoreData(): Promise<StoreData> {
       .select("id, owner_id, name, seller_name, description, whatsapp_number, is_active")
       .single();
 
-    if (createError) throw createError;
-    store = createdStore as StoreRow;
+    if (createError) {
+      // The dashboard can request the store data more than once during the
+      // initial render. If another request created the row first, reuse it
+      // instead of surfacing the unique-constraint error to the user.
+      const { data: concurrentStore, error: concurrentStoreError } = await supabase
+        .from("stores")
+        .select("id, owner_id, name, seller_name, description, whatsapp_number, is_active")
+        .eq("owner_id", user.id)
+        .maybeSingle();
+
+      if (concurrentStoreError || !concurrentStore) throw createError;
+      store = concurrentStore as StoreRow;
+    } else {
+      store = createdStore as StoreRow;
+    }
   }
 
   const { data: products, error: productsError } = await supabase

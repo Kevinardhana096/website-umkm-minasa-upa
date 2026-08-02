@@ -59,6 +59,28 @@ async function removeProductImage(
   if (error) throw error;
 }
 
+async function recordAdminAudit(
+  serviceClient: NonNullable<ReturnType<typeof getServiceClient>>,
+  adminId: string,
+  action: "update" | "delete",
+  resource: CatalogResource,
+  resourceId: string,
+  details: Record<string, unknown>,
+) {
+  const { error } = await serviceClient.from("admin_audit_logs").insert({
+    admin_id: adminId,
+    action,
+    resource,
+    resource_id: resourceId,
+    details,
+  });
+
+  // The audit migration is deployed separately from the application. Keep a
+  // successful catalog mutation from being reported as failed if it has not
+  // been run yet, while leaving an actionable server-side error.
+  if (error) console.error("Failed to write admin audit log", error);
+}
+
 function getString(value: FormDataEntryValue | undefined) {
   return typeof value === "string" ? value.trim() : "";
 }
@@ -75,6 +97,7 @@ function getImageExtension(file: File) {
 async function updateProduct(
   request: Request,
   serviceClient: NonNullable<ReturnType<typeof getServiceClient>>,
+  adminId: string,
 ) {
   const formData = await request.formData();
   if (getString(formData.get("resource") ?? undefined) !== "product") {
@@ -167,12 +190,21 @@ async function updateProduct(
     });
   }
 
+  await recordAdminAudit(serviceClient, adminId, "update", "product", productId, {
+    name,
+    store_id: data.store_id,
+    image_changed: existingProduct.image_path !== imagePath,
+    is_available: isAvailable,
+    is_visible: isVisible,
+  });
+
   return NextResponse.json({ product: data });
 }
 
 async function updateStore(
   request: Request,
   serviceClient: NonNullable<ReturnType<typeof getServiceClient>>,
+  adminId: string,
 ) {
   let body: StoreUpdateBody;
   try {
@@ -209,6 +241,10 @@ async function updateStore(
 
   if (error) return jsonError("Toko gagal diperbarui.", 500);
   if (!data) return jsonError("Toko tidak ditemukan.", 404);
+  await recordAdminAudit(serviceClient, adminId, "update", "store", storeId, {
+    name,
+    is_active: body.is_active,
+  });
   return NextResponse.json({ store: data });
 }
 
@@ -222,9 +258,9 @@ export async function PATCH(request: Request) {
   try {
     const contentType = request.headers.get("content-type") ?? "";
     if (contentType.includes("multipart/form-data")) {
-      return await updateProduct(request, serviceClient);
+      return await updateProduct(request, serviceClient, admin.userId);
     }
-    return await updateStore(request, serviceClient);
+    return await updateStore(request, serviceClient, admin.userId);
   } catch (error) {
     console.error("Failed to update admin catalog data", error);
     return jsonError("Data katalog gagal diperbarui.", 500);
@@ -266,6 +302,7 @@ export async function DELETE(request: Request) {
       await removeProductImage(serviceClient, product.image_path).catch((cleanupError) => {
         console.error("Failed to remove deleted product image", cleanupError);
       });
+      await recordAdminAudit(serviceClient, admin.userId, "delete", "product", id, {});
       return NextResponse.json({ ok: true });
     }
 
@@ -290,6 +327,9 @@ export async function DELETE(request: Request) {
     await Promise.all((products ?? []).map((product) => removeProductImage(serviceClient, product.image_path).catch((cleanupError) => {
       console.error("Failed to remove deleted store product image", cleanupError);
     })));
+    await recordAdminAudit(serviceClient, admin.userId, "delete", "store", id, {
+      deleted_product_count: products?.length ?? 0,
+    });
     return NextResponse.json({ ok: true });
   } catch (error) {
     console.error("Failed to delete admin catalog data", error);
