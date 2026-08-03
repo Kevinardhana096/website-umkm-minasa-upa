@@ -23,7 +23,7 @@ export const Footer: React.FC<FooterProps> = ({ store }) => {
               {storeName}
             </h3>
             <p className="mt-4 text-xs sm:text-sm text-gray-600 leading-relaxed max-w-sm">
-              {store?.description ?? 'Kami adalah mitra UMKM terpercaya yang menyediakan produk lokal berkualitas tinggi langsung dari pengrajinnya.'}
+              {store?.description ?? 'Kelompok UMKM Wanita Tangguh Minasa Upa hadir sebagai wadah kolaborasi untuk meningkatkan kemandirian ekonomi keluarga di bidang makanan, minuman, dan kerajinan.'}
             </p>
           </div>
 

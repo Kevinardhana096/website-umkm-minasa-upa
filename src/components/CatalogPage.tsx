@@ -91,30 +91,33 @@ export const CatalogPage: React.FC<CatalogPageProps> = ({
 
       {/* Main Catalog Body Container */}
       <main className="flex-1 max-w-7xl w-full mx-auto px-4 sm:px-6 lg:px-8 pt-2 pb-12">
-        {/* Hero Section Banner */}
+        {/* Hero Section Banner / Search Bar */}
         <HeroSection
           searchQuery={searchQuery}
           onSearchChange={setSearchQuery}
         />
 
-        {/* Category Pills Filter */}
-        {hasCategories && (
-          <div className="mt-8 mb-4">
-            <CategoryFilter
-              categories={categories}
-              selectedCategory={selectedCategory}
-              onSelectCategory={setSelectedCategory}
-              categoryCounts={categoryCounts}
-            />
-          </div>
-        )}
+        {/* Product Catalog Section Anchor */}
+        <div id="katalog-produk" className="scroll-mt-24 pt-4">
+          {/* Category Pills Filter */}
+          {hasCategories && (
+            <div className="mb-4">
+              <CategoryFilter
+                categories={categories}
+                selectedCategory={selectedCategory}
+                onSelectCategory={setSelectedCategory}
+                categoryCounts={categoryCounts}
+              />
+            </div>
+          )}
 
-        {/* Product Cards Grid with Pagination */}
-        <ProductGrid
-          key={`${searchQuery}:${selectedCategory}`}
-          products={filteredProducts}
-          onDetailClick={(product) => setSelectedProduct(product)}
-        />
+          {/* Product Cards Grid with Pagination */}
+          <ProductGrid
+            key={`${searchQuery}:${selectedCategory}`}
+            products={filteredProducts}
+            onDetailClick={(product) => setSelectedProduct(product)}
+          />
+        </div>
       </main>
 
       {/* Footer */}
