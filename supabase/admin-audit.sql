@@ -4,12 +4,25 @@
 create table if not exists public.admin_audit_logs (
   id uuid primary key default gen_random_uuid(),
   admin_id uuid not null references auth.users(id) on delete restrict,
-  action text not null check (action in ('update', 'delete')),
-  resource text not null check (resource in ('store', 'product')),
+  action text not null check (action in ('create', 'update', 'delete', 'role', 'ban', 'unban', 'reset_password')),
+  resource text not null check (resource in ('store', 'product', 'user')),
   resource_id uuid,
   details jsonb not null default '{}'::jsonb,
   created_at timestamptz not null default now()
 );
+
+-- Perbarui constraint pada project yang sudah menjalankan versi awal migration ini.
+alter table public.admin_audit_logs
+  drop constraint if exists admin_audit_logs_action_check;
+alter table public.admin_audit_logs
+  add constraint admin_audit_logs_action_check
+  check (action in ('create', 'update', 'delete', 'role', 'ban', 'unban', 'reset_password'));
+
+alter table public.admin_audit_logs
+  drop constraint if exists admin_audit_logs_resource_check;
+alter table public.admin_audit_logs
+  add constraint admin_audit_logs_resource_check
+  check (resource in ('store', 'product', 'user'));
 
 create index if not exists admin_audit_logs_created_at_idx
   on public.admin_audit_logs(created_at desc);

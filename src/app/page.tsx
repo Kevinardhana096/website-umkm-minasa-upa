@@ -1,15 +1,15 @@
-import { CatalogPage } from '@/components/CatalogPage';
+import { ProfilPage } from '@/components/ProfilPage';
 import { getPublicCatalog } from '@/lib/catalog';
 import { mockProducts } from '@/data/mockProducts';
 
-export const dynamic = 'force-dynamic';
+export const revalidate = 60;
 
 export default async function Home() {
   const catalog = await getPublicCatalog();
 
   return (
-    <CatalogPage
-      initialProducts={catalog?.products ?? (catalog === null ? mockProducts : [])}
+    <ProfilPage
+      products={catalog?.products ?? (catalog === null ? mockProducts : [])}
       store={catalog?.store ?? null}
     />
   );

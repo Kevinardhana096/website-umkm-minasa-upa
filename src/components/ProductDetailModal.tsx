@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useEffect, useState } from 'react';
+import React, { useEffect, useRef, useState } from 'react';
 import Image from 'next/image';
 import { Product } from '@/types/product';
 import { formatRupiah } from '@/lib/products';
@@ -35,6 +35,18 @@ export const ProductDetailModal: React.FC<ProductDetailModalProps> = ({
   const [activeImageIndex, setActiveImageIndex] = useState(0);
   const [isZoomed, setIsZoomed] = useState(false);
   const [isLiked, setIsLiked] = useState(false);
+  const closeButtonRef = useRef<HTMLButtonElement>(null);
+  const previousFocusRef = useRef<HTMLElement | null>(null);
+
+  useEffect(() => {
+    if (!product) return;
+    previousFocusRef.current = document.activeElement instanceof HTMLElement ? document.activeElement : null;
+    const frame = window.requestAnimationFrame(() => closeButtonRef.current?.focus());
+    return () => {
+      window.cancelAnimationFrame(frame);
+      previousFocusRef.current?.focus();
+    };
+  }, [product]);
 
   useEffect(() => {
     const handleKeyDown = (e: KeyboardEvent) => {
@@ -102,11 +114,15 @@ export const ProductDetailModal: React.FC<ProductDetailModalProps> = ({
       >
         {/* Modal Container */}
         <div 
+          role="dialog"
+          aria-modal="true"
+          aria-labelledby="product-detail-title"
           className="relative w-full max-w-4xl max-h-[90vh] bg-white rounded-[28px] shadow-2xl border border-gray-100 overflow-y-auto flex flex-col md:flex-row items-start scrollbar-thin scrollbar-thumb-gray-200"
           onClick={(e) => e.stopPropagation()}
         >
           {/* Floating Close Button */}
           <button
+            ref={closeButtonRef}
             onClick={onClose}
             className="absolute top-4 right-4 z-20 p-2.5 rounded-full bg-white/80 hover:bg-white text-gray-500 hover:text-gray-900 shadow-md border border-gray-100 transition-all duration-200 cursor-pointer hover:rotate-90"
             aria-label="Tutup Detail Modal"
@@ -220,7 +236,7 @@ export const ProductDetailModal: React.FC<ProductDetailModalProps> = ({
 
               {/* Product Title */}
               <div>
-                <h2 className="text-2xl sm:text-3xl font-extrabold text-gray-900 leading-snug tracking-tight">
+                <h2 id="product-detail-title" className="text-2xl sm:text-3xl font-extrabold text-gray-900 leading-snug tracking-tight">
                   {product.name}
                 </h2>
               </div>

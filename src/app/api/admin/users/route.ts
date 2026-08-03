@@ -60,6 +60,23 @@ async function listAllUsers(serviceClient: NonNullable<ReturnType<typeof getServ
   return users;
 }
 
+async function recordUserAudit(
+  serviceClient: NonNullable<ReturnType<typeof getServiceClient>>,
+  adminId: string,
+  action: "create" | "role" | "ban" | "unban" | "reset_password",
+  userId: string,
+  details: Record<string, unknown> = {},
+) {
+  const { error } = await serviceClient.from("admin_audit_logs").insert({
+    admin_id: adminId,
+    action,
+    resource: "user",
+    resource_id: userId,
+    details,
+  });
+  if (error) console.error("Failed to record admin user audit", error);
+}
+
 export async function GET() {
   const admin = await requireAdmin();
   if (!admin) return jsonError("Akses admin diperlukan.", 403);
@@ -141,6 +158,8 @@ export async function POST(request: Request) {
     return jsonError("User dibuat tetapi profile gagal disimpan.", 500);
   }
 
+  await recordUserAudit(serviceClient, admin.userId, "create", data.user.id, { email, role });
+
   return NextResponse.json({ ok: true, user_id: data.user.id }, { status: 201 });
 }
 
@@ -169,6 +188,7 @@ export async function PATCH(request: Request) {
     if (body.role !== "toko" && body.role !== "admin") return jsonError("Role tidak valid.", 400);
     const { error } = await serviceClient.from("profiles").upsert({ id: userId, role: body.role }, { onConflict: "id" });
     if (error) return jsonError("Role user gagal diperbarui.", 500);
+    await recordUserAudit(serviceClient, admin.userId, "role", userId, { role: body.role });
     return NextResponse.json({ ok: true });
   }
 
@@ -177,6 +197,7 @@ export async function PATCH(request: Request) {
       ban_duration: body.banned ? "876000h" : "none",
     });
     if (error) return jsonError("Status user gagal diperbarui.", 400);
+    await recordUserAudit(serviceClient, admin.userId, body.banned ? "ban" : "unban", userId);
     return NextResponse.json({ ok: true });
   }
 
@@ -184,6 +205,7 @@ export async function PATCH(request: Request) {
     if (!body.password || body.password.length < 6) return jsonError("Password baru minimal 6 karakter.", 400);
     const { error } = await serviceClient.auth.admin.updateUserById(userId, { password: body.password });
     if (error) return jsonError("Password user gagal direset.", 400);
+    await recordUserAudit(serviceClient, admin.userId, "reset_password", userId);
     return NextResponse.json({ ok: true });
   }
 

@@ -15,9 +15,18 @@ export const ProductCard: React.FC<ProductCardProps> = ({ product, onDetailClick
   const formattedPrice = formatRupiah(product.price);
 
   return (
-    <div 
+    <article
+      role="button"
+      tabIndex={0}
+      aria-label={`Lihat detail ${product.name}`}
       onClick={() => onDetailClick(product)}
-      className="group bg-white rounded-xl sm:rounded-2xl border border-gray-200/70 shadow-xs hover:shadow-xl hover:-translate-y-1 transition-all duration-300 flex flex-col overflow-hidden cursor-pointer"
+      onKeyDown={(event) => {
+        if (event.key === 'Enter' || event.key === ' ') {
+          event.preventDefault();
+          onDetailClick(product);
+        }
+      }}
+      className="group bg-white rounded-xl sm:rounded-2xl border border-gray-200/70 shadow-xs hover:shadow-xl hover:-translate-y-1 transition-all duration-300 flex flex-col overflow-hidden cursor-pointer focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[#0F2C23]"
     >
       {/* Image Container with Badge */}
       <div className="relative aspect-[4/3] w-full overflow-hidden bg-gray-100">
@@ -102,18 +111,15 @@ export const ProductCard: React.FC<ProductCardProps> = ({ product, onDetailClick
             </div>
           </div>
 
-          <button
-            onClick={(e) => {
-              e.stopPropagation();
-              onDetailClick(product);
-            }}
+          <span
+            aria-hidden="true"
             className="px-2 py-1.5 sm:px-3.5 sm:py-2 text-[10px] sm:text-xs font-semibold text-gray-800 bg-gray-50 border border-gray-200 rounded-lg sm:rounded-xl group-hover:bg-[#0F2C23] group-hover:text-white group-hover:border-[#0F2C23] transition-all duration-200 flex items-center gap-1 shrink-0"
           >
             <Eye className="w-3 h-3 sm:w-3.5 sm:h-3.5" />
             <span className="hidden sm:inline">Detail</span>
-          </button>
+          </span>
         </div>
       </div>
-    </div>
+    </article>
   );
 };

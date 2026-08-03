@@ -101,7 +101,7 @@ export const FloatingChatWidget = forwardRef<FloatingChatWidgetRef, FloatingChat
   return (
     <div className="fixed bottom-4 right-4 sm:bottom-6 sm:right-6 z-50">
       {isOpen && (
-        <div className="fixed bottom-20 right-4 left-4 z-50 flex h-[440px] max-h-[75vh] flex-col overflow-hidden rounded-2xl border border-gray-200 bg-white shadow-2xl sm:absolute sm:bottom-16 sm:right-0 sm:left-auto sm:h-[460px] sm:w-96">
+        <div role="dialog" aria-modal="false" aria-label="Asisten UMKM Bot" className="fixed bottom-20 right-4 left-4 z-50 flex h-[440px] max-h-[75vh] flex-col overflow-hidden rounded-2xl border border-gray-200 bg-white shadow-2xl sm:absolute sm:bottom-16 sm:right-0 sm:left-auto sm:h-[460px] sm:w-96">
           <div className="flex items-center justify-between bg-[#963E1B] p-4 text-white">
             <div className="flex items-center gap-2.5">
               <div className="flex h-8 w-8 items-center justify-center rounded-full bg-white/20"><Bot className="h-5 w-5" /></div>
@@ -110,7 +110,7 @@ export const FloatingChatWidget = forwardRef<FloatingChatWidgetRef, FloatingChat
             <button onClick={() => setIsOpen(false)} className="rounded-lg p-1 text-white transition-colors hover:bg-white/20" aria-label="Tutup chat"><X className="h-5 w-5" /></button>
           </div>
 
-          <div className="flex-1 space-y-3 overflow-y-auto bg-gray-50/50 p-4">
+          <div aria-live="polite" className="flex-1 space-y-3 overflow-y-auto bg-gray-50/50 p-4">
             {messages.map((message, index) => (
               <div key={`${message.sender}-${index}`} className={`flex ${message.sender === 'user' ? 'justify-end' : 'justify-start'}`}>
                 <div className={`max-w-[85%] sm:max-w-[82%] rounded-2xl px-3.5 py-2.5 text-xs leading-relaxed ${message.sender === 'user' ? 'rounded-br-none bg-[#0F2C23] text-white' : 'rounded-bl-none border border-gray-200 bg-white text-gray-800 shadow-sm'}`}>
@@ -122,7 +122,7 @@ export const FloatingChatWidget = forwardRef<FloatingChatWidgetRef, FloatingChat
           </div>
 
           <form onSubmit={handleSend} className="flex gap-2 border-t border-gray-100 bg-white p-3">
-            <input type="text" value={inputText} onChange={(event) => setInputText(event.target.value)} placeholder="Tulis pesan..." className="flex-1 rounded-xl bg-gray-100 px-3 py-2 text-xs focus:outline-none focus:ring-1 focus:ring-[#963E1B]" />
+            <input aria-label="Pesan untuk asisten UMKM" type="text" value={inputText} onChange={(event) => setInputText(event.target.value)} placeholder="Tulis pesan..." className="flex-1 rounded-xl bg-gray-100 px-3 py-2 text-xs focus:outline-none focus:ring-1 focus:ring-[#963E1B]" />
             <button type="submit" className="rounded-xl bg-[#963E1B] p-2.5 text-white transition-colors hover:bg-[#803214]" aria-label="Kirim pesan"><Send className="h-4 w-4" /></button>
           </form>
         </div>

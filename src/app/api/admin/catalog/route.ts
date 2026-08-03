@@ -1,7 +1,7 @@
 import { NextResponse } from "next/server";
 import { createClient as createSupabaseClient } from "@supabase/supabase-js";
 import { createClient } from "@/lib/supabase/server";
-import { MAX_PRODUCT_IMAGES, normalizeProductRow, normalizeProductRows, PRODUCT_SELECT, type ProductImageRow, type ProductQueryRow } from "@/lib/products";
+import { MAX_PRODUCT_IMAGES, normalizeProductRow, normalizeProductRows, PRODUCT_SELECT, type ProductQueryRow } from "@/lib/products";
 
 export const dynamic = "force-dynamic";
 
@@ -189,65 +189,6 @@ async function resolveAdminImages(
   return { existing, resolved, uploadedPaths };
 }
 
-async function persistAdminImages(
-  serviceClient: NonNullable<ReturnType<typeof getServiceClient>>,
-  productId: string,
-  existingProduct: ProductQueryRow,
-  images: Array<{ id?: string; imagePath: string; isPrimary: boolean; sortOrder: number }>,
-) {
-  const existing = normalizeProductRow(existingProduct);
-  const desiredIds = new Set(images.map((image) => image.id).filter((id): id is string => Boolean(id)));
-  const removedImages = existing.product_images.filter((image) => !desiredIds.has(image.id));
-
-  if (removedImages.length > 0) {
-    const { error } = await serviceClient.from("product_images").delete().in("id", removedImages.map((image) => image.id));
-    if (error) throw error;
-  }
-  if (existing.product_images.length > 0) {
-    const { error } = await serviceClient.from("product_images").update({ is_primary: false }).eq("product_id", productId);
-    if (error) throw error;
-  }
-
-  const retainedImages = images.filter((image) => image.id);
-  for (const [index, image] of retainedImages.entries()) {
-    const { error } = await serviceClient.from("product_images").update({ image_path: image.imagePath, sort_order: 10000 + index, is_primary: false }).eq("id", image.id).eq("product_id", productId);
-    if (error) throw error;
-  }
-
-  const newImages = images.filter((image) => !image.id);
-  let insertedImages: ProductImageRow[] = [];
-  if (newImages.length > 0) {
-    const { data, error } = await serviceClient
-      .from("product_images")
-      .insert(newImages.map((image) => ({ product_id: productId, image_path: image.imagePath, sort_order: 1000 + image.sortOrder, is_primary: false })))
-      .select("id, product_id, image_path, sort_order, is_primary, created_at, updated_at")
-      .returns<ProductImageRow[]>();
-    if (error) throw error;
-    insertedImages = data ?? [];
-  }
-
-  const imageIdsByPath = new Map<string, string>([
-    ...retainedImages.map((image) => [image.imagePath, image.id as string] as const),
-    ...insertedImages.map((image) => [image.image_path, image.id] as const),
-  ]);
-  for (const image of images) {
-    const imageId = imageIdsByPath.get(image.imagePath);
-    if (!imageId) throw new Error("Foto produk gagal disimpan.");
-    const { error } = await serviceClient.from("product_images").update({ sort_order: image.sortOrder, is_primary: false }).eq("id", imageId).eq("product_id", productId);
-    if (error) throw error;
-  }
-
-  const primaryImage = images.find((image) => image.isPrimary);
-  if (primaryImage) {
-    const primaryId = imageIdsByPath.get(primaryImage.imagePath);
-    if (!primaryId) throw new Error("Foto utama produk gagal ditentukan.");
-    const { error } = await serviceClient.from("product_images").update({ is_primary: true }).eq("id", primaryId).eq("product_id", productId);
-    if (error) throw error;
-  }
-
-  return { removedPaths: removedImages.map((image) => image.image_path), primaryPath: primaryImage?.imagePath ?? null };
-}
-
 async function updateProduct(
   request: Request,
   serviceClient: NonNullable<ReturnType<typeof getServiceClient>>,
@@ -296,29 +237,34 @@ async function updateProduct(
     .maybeSingle<{ store_id: string; stores: { owner_id: string } | null }>();
   if (ownerError || !productOwner?.stores?.owner_id) return jsonError("Pemilik toko produk tidak ditemukan.", 500);
 
-  let galleryPersisted = false;
+  let databasePersisted = false;
   let uploadedPaths: string[] = [];
   try {
     const imageResult = await resolveAdminImages(serviceClient, productOwner.stores.owner_id, parseImageDrafts(formData), existingProduct);
     uploadedPaths = imageResult.uploadedPaths;
-    const { removedPaths, primaryPath } = await persistAdminImages(serviceClient, productId, existingProduct, imageResult.resolved);
-    galleryPersisted = true;
-
-    const { error } = await serviceClient
-      .from("products")
-      .update({
-        name,
-        description,
-        price,
-        image_path: primaryPath,
-        is_available: isAvailable,
-        is_visible: isVisible,
-      })
-      .eq("id", productId);
-    if (error) return jsonError("Produk gagal diperbarui.", 500);
+    const primaryPath = imageResult.resolved.find((image) => image.isPrimary)?.imagePath ?? null;
+    const { error: saveError } = await serviceClient.rpc("save_product_with_gallery", {
+      p_product_id: productId,
+      p_store_id: existingProduct.store_id,
+      p_name: name,
+      p_description: description,
+      p_price: price,
+      p_is_available: isAvailable,
+      p_is_visible: isVisible,
+      p_images: imageResult.resolved.map((image) => ({
+        image_path: image.imagePath,
+        is_primary: image.isPrimary,
+      })),
+    });
+    if (saveError) throw saveError;
+    databasePersisted = true;
 
     const retainedPaths = new Set(imageResult.resolved.map((image) => image.imagePath));
-    await Promise.all([...removedPaths, ...(existingProduct.image_path && !retainedPaths.has(existingProduct.image_path) ? [existingProduct.image_path] : [])]
+    const replacedPaths = [
+      ...imageResult.existing.product_images.map((image) => image.image_path),
+      ...(existingProduct.image_path ? [existingProduct.image_path] : []),
+    ].filter((path) => !retainedPaths.has(path));
+    await Promise.all(replacedPaths
       .filter((path, index, paths) => paths.indexOf(path) === index)
       .map((path) => removeProductImage(serviceClient, path).catch((cleanupError) => {
         console.error("Failed to remove replaced product image", cleanupError);
@@ -342,7 +288,7 @@ async function updateProduct(
 
     return NextResponse.json({ product: normalizeProductRow(data) });
   } catch (error) {
-    if (!galleryPersisted && uploadedPaths.length > 0) {
+    if (!databasePersisted && uploadedPaths.length > 0) {
       await serviceClient.storage.from("product-images").remove(uploadedPaths).catch(() => undefined);
     }
     throw error;

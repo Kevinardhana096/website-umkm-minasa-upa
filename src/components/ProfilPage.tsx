@@ -14,38 +14,40 @@ import {
 import { Navbar } from './Navbar';
 import { Footer } from './Footer';
 import { FloatingChatWidget, FloatingChatWidgetRef } from './FloatingChatWidget';
-import { mockProducts } from '@/data/mockProducts';
-import type { CatalogStore } from '@/lib/products';
+import { formatRupiah, type CatalogStore } from '@/lib/products';
+import type { Product } from '@/types/product';
 
 interface ProfilPageProps {
   store?: CatalogStore | null;
+  products?: Product[];
 }
 
-export const ProfilPage: React.FC<ProfilPageProps> = ({ store = null }) => {
+export const ProfilPage: React.FC<ProfilPageProps> = ({ store = null, products = [] }) => {
   const chatWidgetRef = useRef<FloatingChatWidgetRef>(null);
 
   const heroSlides = [
     {
-      src: '/hero_umkm_bg.jpg',
-      alt: 'Lokakarya & Perajin Minasa Upa',
+      src: '/carousel/pexels-craft-group.jpeg',
+      alt: 'Perempuan mengerjakan kerajinan tangan di ruang produksi',
     },
     {
-      src: '/umkm_wanita_tangguh.jpg',
-      alt: 'Perempuan Kreatif Minasa Upa',
+      src: '/carousel/pexels-craft-studio.jpeg',
+      alt: 'Dua perajin perempuan membuat produk kerajinan tangan',
     },
     {
-      src: '/food_umkm.jpg',
-      alt: 'Kuliner Tangguh Minasa Upa',
+      src: '/carousel/pexels-food-stand.jpeg',
+      alt: 'Perempuan menyiapkan makanan di stan kuliner',
     },
     {
-      src: '/craft_umkm.jpg',
-      alt: 'Kriya & Kerajinan Minasa Upa',
+      src: '/carousel/pexels-food-market.jpeg',
+      alt: 'Aktivitas kuliner di pasar makanan',
     },
   ];
 
   const [currentSlide, setCurrentSlide] = useState(0);
 
   useEffect(() => {
+    if (window.matchMedia('(prefers-reduced-motion: reduce)').matches) return;
     const timer = setInterval(() => {
       setCurrentSlide((prev) => (prev + 1) % heroSlides.length);
     }, 4500);
@@ -73,12 +75,12 @@ export const ProfilPage: React.FC<ProfilPageProps> = ({ store = null }) => {
     window.open(waUrl, '_blank');
   };
 
-  const featuredProducts = mockProducts.slice(0, 4);
+  const featuredProducts = products.slice(0, 4);
 
   return (
     <div className="min-h-screen flex flex-col bg-[#FAF9F6] text-gray-900 font-sans selection:bg-[#F4EBD9]">
       {/* Sticky Navbar */}
-      <Navbar onContactClick={handleContactSellerClick} />
+      <Navbar transparentAtTop onContactClick={handleContactSellerClick} />
 
       {/* Main Body */}
       <main className="flex-1 pb-20">
@@ -86,7 +88,7 @@ export const ProfilPage: React.FC<ProfilPageProps> = ({ store = null }) => {
         {/* =========================================================================
             HERO HEADER WITH HORIZONTAL AUTO-SLIDING CAROUSEL
            ========================================================================= */}
-        <section className="relative w-full min-h-[420px] sm:min-h-[480px] flex items-center justify-center overflow-hidden mb-12 sm:mb-16 group">
+        <section className="group relative flex min-h-[100svh] w-full items-center justify-center overflow-hidden mb-12 sm:mb-16">
           
           {/* Horizontal Sliding Images Track */}
           <div 
@@ -94,13 +96,13 @@ export const ProfilPage: React.FC<ProfilPageProps> = ({ store = null }) => {
             style={{ transform: `translateX(-${currentSlide * 100}%)` }}
           >
             {heroSlides.map((slide, index) => (
-              <div key={index} className="relative w-full h-full shrink-0">
+              <div key={index} className="relative w-full h-full shrink-0 bg-[#202522]">
                 <Image
                   src={slide.src}
                   alt={slide.alt}
                   fill
-                  quality={95}
                   sizes="100vw"
+                  unoptimized
                   className="object-cover object-center"
                   priority={index === 0}
                 />
@@ -109,26 +111,32 @@ export const ProfilPage: React.FC<ProfilPageProps> = ({ store = null }) => {
           </div>
           
           {/* Dark Gradient Overlay for High Text Readability */}
-          <div className="absolute inset-0 bg-gradient-to-t from-black/85 via-black/55 to-black/70 backdrop-blur-[1px]" />
+          <div className="absolute inset-0 bg-gradient-to-t from-black/55 via-black/20 to-black/10" />
 
           {/* Hero Content Text */}
-          <div className="relative z-10 max-w-4xl mx-auto px-4 sm:px-6 text-center text-white py-16">
-            {/* Main Headline */}
-            <h1 className="text-3xl sm:text-5xl lg:text-6xl font-extrabold text-white tracking-tight leading-tight">
-              Kelompok UMKM Wanita Tangguh Minasa Upa
-            </h1>
+          <div className="relative z-10 mx-auto max-w-6xl px-4 py-12 text-center text-white sm:px-6 sm:py-16 lg:py-20">
+            <div className="mx-auto max-w-6xl">
+              {/* Main Headline */}
+              <h1 className="mx-auto max-w-6xl font-serif text-[clamp(1.75rem,5vw,3.75rem)] font-semibold leading-[1.04] tracking-[-0.025em] text-white drop-shadow-[0_3px_10px_rgba(0,0,0,0.45)]">
+                <span className="block xl:whitespace-nowrap">
+                  Kelompok UMKM{' '}
+                  <span className="text-amber-200 italic">Wanita Tangguh</span>
+                </span>
+                <span className="mt-1 block text-white sm:mt-2">Minasa Upa</span>
+              </h1>
 
-            {/* Subtitle */}
-            <p className="mt-4 sm:mt-6 text-sm sm:text-lg text-gray-200 leading-relaxed font-normal max-w-2xl mx-auto">
-              Kolektif perajin dan perempuan kreatif lokal di wilayah Minasa Upa yang berdedikasi melestarikan karya berkualitas tinggi, menjembatani tradisi dengan pasar modern.
-            </p>
+              {/* Subtitle */}
+              <p className="mx-auto mt-5 max-w-2xl font-serif text-[clamp(0.875rem,2.2vw,1.25rem)] font-medium leading-6 tracking-[0.01em] text-white/90 drop-shadow-[0_2px_6px_rgba(0,0,0,0.5)] sm:mt-6 sm:leading-9 lg:mt-7 lg:max-w-3xl">
+                Kelompok usaha bersama 13 perempuan Minasa Upa yang mengembangkan pangan olahan khas daerah melalui penguatan pemasaran digital dan identitas merek.
+              </p>
+            </div>
           </div>
 
           {/* Manual Control Buttons */}
           <button
             onClick={prevSlide}
             aria-label="Previous Slide"
-            className="absolute left-3 sm:left-6 top-1/2 -translate-y-1/2 z-20 p-2.5 rounded-full bg-black/30 hover:bg-black/60 text-white backdrop-blur-sm transition-all opacity-0 group-hover:opacity-100 cursor-pointer"
+            className="absolute left-3 top-1/2 z-20 -translate-y-1/2 cursor-pointer rounded-full bg-black/30 p-2.5 text-white opacity-100 backdrop-blur-sm transition-all hover:bg-black/60 sm:left-6 sm:opacity-0 sm:group-hover:opacity-100"
           >
             <ChevronLeft className="w-5 h-5 sm:w-6 sm:h-6" />
           </button>
@@ -136,7 +144,7 @@ export const ProfilPage: React.FC<ProfilPageProps> = ({ store = null }) => {
           <button
             onClick={nextSlide}
             aria-label="Next Slide"
-            className="absolute right-3 sm:right-6 top-1/2 -translate-y-1/2 z-20 p-2.5 rounded-full bg-black/30 hover:bg-black/60 text-white backdrop-blur-sm transition-all opacity-0 group-hover:opacity-100 cursor-pointer"
+            className="absolute right-3 top-1/2 z-20 -translate-y-1/2 cursor-pointer rounded-full bg-black/30 p-2.5 text-white opacity-100 backdrop-blur-sm transition-all hover:bg-black/60 sm:right-6 sm:opacity-0 sm:group-hover:opacity-100"
           >
             <ChevronRight className="w-5 h-5 sm:w-6 sm:h-6" />
           </button>
@@ -171,6 +179,7 @@ export const ProfilPage: React.FC<ProfilPageProps> = ({ store = null }) => {
                     src="/logo_umkm.png"
                     alt="Logo UMKM Wanita Tangguh Minasa Upa"
                     fill
+                    sizes="(max-width: 640px) 280px, 280px"
                     className="object-contain drop-shadow-md hover:scale-105 transition-transform duration-300"
                     priority
                   />
@@ -184,24 +193,23 @@ export const ProfilPage: React.FC<ProfilPageProps> = ({ store = null }) => {
               {/* Tag Line */}
               <div className="flex items-center gap-2 text-[#963E1B] text-xs font-bold uppercase tracking-wider">
                 <Compass className="w-4 h-4" />
-                <span>TENTANG KAMI</span>
+                <span>TENTANG KELOMPOK</span>
               </div>
 
               {/* Main Heading */}
               <h2 className="text-2xl sm:text-4xl font-bold text-gray-900 tracking-tight leading-tight">
-                Kelompok UMKM Wanita Tangguh Minasa Upa
+                Menguatkan kemandirian ekonomi perempuan Minasa Upa
               </h2>
 
-              {/* Paragraphs with Exact Prompt Text */}
               <div className="space-y-4 text-sm sm:text-base text-gray-600 leading-relaxed">
                 <p>
-                  Kelompok UMKM Wanita Tangguh Minasa Upa terbentuk dari semangat para ibu rumah tangga dan perempuan kreatif di wilayah Minasa Upa yang ingin meningkatkan kemandirian ekonomi keluarga.
+                  Kelompok UMKM Wanita Tangguh Minasa Upa merupakan kelompok usaha bersama yang berdiri sejak 2020 dan beranggotakan 13 perempuan usia produktif. Kelompok ini tumbuh dari semangat kolaborasi untuk memperkuat kemandirian ekonomi keluarga.
                 </p>
                 <p>
-                  Melalui keterampilan di bidang makanan, Minuman , Dan Kerajinan kelompok ini hadir sebagai wadah kolaborasi untuk mengembangkan usaha kecil secara bersama-sama.
+                  Berbasis di Desa Minasa Upa, Kecamatan Bontoa, Kabupaten Maros, para anggota mengembangkan produk pangan olahan seperti kue coklat balok, kue kering, onde-onde, sambal kemasan, dan keripik pisang dengan bahan baku lokal.
                 </p>
                 <p>
-                  Selain untuk memperkuat ekonomi, terbentuknya kelompok ini juga bertujuan membangun solidaritas, saling mendukung, dan memberdayakan perempuan agar lebih berdaya saing.
+                  Program pemberdayaan diarahkan pada penguatan konten promosi visual, identitas merek, dan layanan pelanggan digital berbasis AI agar produk lebih dikenal, mudah diakses, dan mampu menjangkau pasar yang lebih luas.
                 </p>
               </div>
 
@@ -209,15 +217,19 @@ export const ProfilPage: React.FC<ProfilPageProps> = ({ store = null }) => {
               <div className="flex flex-wrap gap-2.5 pt-3">
                 <span className="px-3.5 py-1.5 rounded-full bg-gray-100 text-gray-800 text-xs font-medium border border-gray-200/80 flex items-center gap-1.5">
                   <CheckCircle2 className="w-3.5 h-3.5 text-gray-700" />
-                  Pemberdayaan Lokal
+                  13 Anggota Perempuan
                 </span>
                 <span className="px-3.5 py-1.5 rounded-full bg-gray-100 text-gray-800 text-xs font-medium border border-gray-200/80 flex items-center gap-1.5">
                   <CheckCircle2 className="w-3.5 h-3.5 text-gray-700" />
-                  Makanan, Minuman & Kerajinan
+                  Berdiri Sejak 2020
                 </span>
                 <span className="px-3.5 py-1.5 rounded-full bg-gray-100 text-gray-800 text-xs font-medium border border-gray-200/80 flex items-center gap-1.5">
                   <CheckCircle2 className="w-3.5 h-3.5 text-gray-700" />
-                  Solidaritas & Saling Dukung
+                  Pangan Olahan Khas Daerah
+                </span>
+                <span className="px-3.5 py-1.5 rounded-full bg-gray-100 text-gray-800 text-xs font-medium border border-gray-200/80 flex items-center gap-1.5">
+                  <CheckCircle2 className="w-3.5 h-3.5 text-gray-700" />
+                  Pemasaran Digital Berbasis AI
                 </span>
               </div>
 
@@ -237,13 +249,14 @@ export const ProfilPage: React.FC<ProfilPageProps> = ({ store = null }) => {
               Produk Unggulan
             </h2>
             <p className="mt-2 text-sm sm:text-base text-gray-600">
-              Koleksi pilihan dari anggota kelompok UMKM kami.
+              Produk olahan yang dikembangkan oleh anggota Kelompok UMKM Wanita Tangguh Minasa Upa.
             </p>
           </div>
 
           {/* Product Grid */}
-          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6">
-            {featuredProducts.map((product) => (
+          {featuredProducts.length > 0 ? (
+            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6">
+              {featuredProducts.map((product) => (
               <div 
                 key={product.id}
                 className="bg-white rounded-2xl overflow-hidden border border-gray-200/80 shadow-2xs hover:shadow-md transition-all flex flex-col group"
@@ -275,7 +288,7 @@ export const ProfilPage: React.FC<ProfilPageProps> = ({ store = null }) => {
 
                   <div className="mt-4 pt-3 border-t border-gray-100 flex items-center justify-between">
                     <span className="text-sm font-extrabold text-gray-900">
-                      Rp {(product.price ?? 0).toLocaleString('id-ID')}
+                      {formatRupiah(product.price)}
                     </span>
                     <Link
                       href="/katalog"
@@ -287,8 +300,13 @@ export const ProfilPage: React.FC<ProfilPageProps> = ({ store = null }) => {
                   </div>
                 </div>
               </div>
-            ))}
-          </div>
+              ))}
+            </div>
+          ) : (
+            <div className="rounded-2xl border border-dashed border-gray-300 bg-white/70 px-6 py-12 text-center text-sm text-gray-500">
+              Produk unggulan belum tersedia.
+            </div>
+          )}
 
           {/* View All CTA */}
           <div className="text-center mt-12">

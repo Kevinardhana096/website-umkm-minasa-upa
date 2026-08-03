@@ -1,4 +1,5 @@
-import { createClient } from "@/lib/supabase/server";
+import { createClient } from "@supabase/supabase-js";
+import { unstable_cache } from "next/cache";
 import { mapProductRow, normalizeProductRows, PRODUCT_SELECT, type CatalogStore, type ProductQueryRow, type StoreRow } from "@/lib/products";
 import type { Product } from "@/types/product";
 
@@ -7,14 +8,16 @@ export interface PublicCatalogData {
   store: CatalogStore | null;
 }
 
-export async function getPublicCatalog(): Promise<PublicCatalogData | null> {
+async function fetchPublicCatalog(): Promise<PublicCatalogData | null> {
   const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL;
   const supabaseKey = process.env.NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY;
 
   if (!supabaseUrl || !supabaseKey) return null;
 
   try {
-    const supabase = await createClient();
+    const supabase = createClient(supabaseUrl, supabaseKey, {
+      auth: { autoRefreshToken: false, persistSession: false },
+    });
     const { data: stores, error: storeError } = await supabase
       .from("stores")
       .select("id, owner_id, name, seller_name, description, whatsapp_number, is_active")
@@ -31,13 +34,15 @@ export async function getPublicCatalog(): Promise<PublicCatalogData | null> {
       .in("store_id", stores.map((store) => store.id))
       .eq("is_visible", true)
       .order("created_at", { ascending: false })
+      .limit(500)
       .returns<ProductQueryRow[]>();
 
     if (productError) throw productError;
 
+    const storesById = new Map(stores.map((store) => [store.id, store]));
     return {
       products: normalizeProductRows(rows).flatMap((row) => {
-        const store = stores.find((item) => item.id === row.store_id);
+        const store = storesById.get(row.store_id);
         return store ? [mapProductRow(row, store, supabaseUrl)] : [];
       }),
       store: stores.length === 1
@@ -55,3 +60,7 @@ export async function getPublicCatalog(): Promise<PublicCatalogData | null> {
     return { products: [], store: null };
   }
 }
+
+export const getPublicCatalog = unstable_cache(fetchPublicCatalog, ["public-catalog"], {
+  revalidate: 60,
+});

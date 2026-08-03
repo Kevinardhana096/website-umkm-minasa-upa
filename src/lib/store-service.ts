@@ -1,6 +1,6 @@
 import type { User } from "@supabase/supabase-js";
 import { createClient } from "@/lib/supabase/client";
-import { MAX_PRODUCT_IMAGES, normalizeProductRows, PRODUCT_SELECT, type ProductImageRow, type ProductQueryRow, type ProductRow, type StoreRow } from "@/lib/products";
+import { MAX_PRODUCT_IMAGES, normalizeProductRows, PRODUCT_SELECT, type ProductQueryRow, type ProductRow, type StoreRow } from "@/lib/products";
 
 const IMAGE_TYPES = new Set(["image/jpeg", "image/png", "image/webp"]);
 const MAX_IMAGE_SIZE = 5 * 1024 * 1024;
@@ -256,95 +256,6 @@ async function resolveProductImages(
   return { resolved, uploadedPaths };
 }
 
-async function persistProductImages(
-  productId: string,
-  existingProduct: ProductRow | undefined,
-  images: Array<{ id?: string; imagePath: string; isPrimary: boolean; sortOrder: number }>,
-) {
-  const supabase = createClient();
-  const existingImages = existingProduct?.product_images ?? [];
-  const desiredIds = new Set(images.map((image) => image.id).filter((id): id is string => Boolean(id)));
-  const removedImages = existingImages.filter((image) => !desiredIds.has(image.id));
-
-  if (removedImages.length > 0) {
-    const { error } = await supabase
-      .from("product_images")
-      .delete()
-      .in("id", removedImages.map((image) => image.id));
-    if (error) throw error;
-  }
-
-  // Clear primary flags before changing order/primary selection so the
-  // partial unique index never sees two primary images.
-  if (existingImages.length > 0) {
-    const { error } = await supabase
-      .from("product_images")
-      .update({ is_primary: false })
-      .eq("product_id", productId);
-    if (error) throw error;
-  }
-
-  const retainedImages = images.filter((image) => image.id);
-  for (const [index, image] of retainedImages.entries()) {
-    const { error } = await supabase
-      .from("product_images")
-      .update({ image_path: image.imagePath, sort_order: 10000 + index, is_primary: false })
-      .eq("id", image.id)
-      .eq("product_id", productId);
-    if (error) throw error;
-  }
-
-  const newImages = images.filter((image) => !image.id);
-  let insertedImages: ProductImageRow[] = [];
-  if (newImages.length > 0) {
-    const { data, error } = await supabase
-      .from("product_images")
-      .insert(newImages.map((image) => ({
-        product_id: productId,
-        image_path: image.imagePath,
-        sort_order: 1000 + image.sortOrder,
-        is_primary: false,
-      })))
-      .select("id, product_id, image_path, sort_order, is_primary, created_at, updated_at")
-      .returns<ProductImageRow[]>();
-    if (error) throw error;
-    insertedImages = data ?? [];
-  }
-
-  const imageIdsByPath = new Map<string, string>([
-    ...retainedImages.map((image) => [image.imagePath, image.id as string] as const),
-    ...insertedImages.map((image) => [image.image_path, image.id] as const),
-  ]);
-
-  for (const image of images) {
-    const imageId = imageIdsByPath.get(image.imagePath);
-    if (!imageId) throw new Error("Foto produk gagal disimpan.");
-    const { error } = await supabase
-      .from("product_images")
-      .update({ sort_order: image.sortOrder, is_primary: false })
-      .eq("id", imageId)
-      .eq("product_id", productId);
-    if (error) throw error;
-  }
-
-  const primaryImage = images.find((image) => image.isPrimary);
-  if (primaryImage) {
-    const primaryId = imageIdsByPath.get(primaryImage.imagePath);
-    if (!primaryId) throw new Error("Foto utama produk gagal ditentukan.");
-    const { error } = await supabase
-      .from("product_images")
-      .update({ is_primary: true })
-      .eq("id", primaryId)
-      .eq("product_id", productId);
-    if (error) throw error;
-  }
-
-  return {
-    removedPaths: removedImages.map((image) => image.image_path),
-    primaryPath: primaryImage?.imagePath ?? null,
-  };
-}
-
 export async function saveProduct(storeId: string, input: NewProductInput) {
   const supabase = createClient();
   const { data: userData, error: userError } = await supabase.auth.getUser();
@@ -358,61 +269,38 @@ export async function saveProduct(storeId: string, input: NewProductInput) {
 
   const existingProduct = input.id ? await getProductForStore(input.id, storeId) : undefined;
   const { resolved, uploadedPaths } = await resolveProductImages(userData.user.id, getImageDrafts(input), existingProduct);
-  const primaryPath = resolved.find((image) => image.isPrimary)?.imagePath ?? null;
-  const payload = {
-    store_id: storeId,
-    name,
-    description,
-    price: input.price,
-    image_path: primaryPath,
-    is_available: input.isAvailable,
-    is_visible: input.isVisible,
-  };
-
-  let productId = input.id ?? null;
-  let galleryPersisted = false;
-  try {
-    if (!productId) {
-      const { data, error } = await supabase
-        .from("products")
-        .insert(payload)
-        .select("id")
-        .single<{ id: string }>();
-      if (error) throw error;
-      productId = data.id;
-    }
-
-    const { removedPaths } = await persistProductImages(productId, existingProduct, resolved);
-    galleryPersisted = true;
-    if (input.id) {
-      const { error } = await supabase
-        .from("products")
-        .update(payload)
-        .eq("id", productId)
-        .eq("store_id", storeId);
-      if (error) throw error;
-    }
-    const retainedPaths = new Set(resolved.map((image) => image.imagePath));
-    const removedLegacyPath = existingProduct?.image_path && !retainedPaths.has(existingProduct.image_path)
-      ? [existingProduct.image_path]
-      : [];
-    await removeProductImages([...removedPaths, ...removedLegacyPath]).catch(() => undefined);
-
-    const { data, error } = await supabase
-      .from("products")
-      .select(PRODUCT_SELECT)
-      .eq("id", productId)
-      .single<ProductQueryRow>();
-    if (error) throw error;
-    return normalizeProductRows([data])[0];
-  } catch (error) {
-    if (!input.id && productId) {
-      // A failed gallery insert must not leave an orphan product behind.
-      await supabase.from("products").delete().eq("id", productId).then(() => undefined);
-    }
-    if (!galleryPersisted) await removeProductImages(uploadedPaths).catch(() => undefined);
-    throw error;
+  const { data: productId, error: saveError } = await supabase.rpc("save_product_with_gallery", {
+    p_product_id: input.id ?? null,
+    p_store_id: storeId,
+    p_name: name,
+    p_description: description,
+    p_price: input.price,
+    p_is_available: input.isAvailable,
+    p_is_visible: input.isVisible,
+    p_images: resolved.map((image) => ({
+      image_path: image.imagePath,
+      is_primary: image.isPrimary,
+    })),
+  });
+  if (saveError || typeof productId !== "string") {
+    await removeProductImages(uploadedPaths).catch(() => undefined);
+    throw saveError ?? new Error("Produk gagal disimpan.");
   }
+
+  const retainedPaths = new Set(resolved.map((image) => image.imagePath));
+  const replacedPaths = [
+    ...(existingProduct?.product_images ?? []).map((image) => image.image_path),
+    ...(existingProduct?.image_path ? [existingProduct.image_path] : []),
+  ].filter((path) => !retainedPaths.has(path));
+  await removeProductImages(replacedPaths).catch(() => undefined);
+
+  const { data, error } = await supabase
+    .from("products")
+    .select(PRODUCT_SELECT)
+    .eq("id", productId)
+    .single<ProductQueryRow>();
+  if (error) throw error;
+  return normalizeProductRows([data])[0];
 }
 
 export async function deleteProduct(productId: string) {
