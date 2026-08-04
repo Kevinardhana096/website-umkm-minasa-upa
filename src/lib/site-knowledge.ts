@@ -22,7 +22,7 @@ export function buildWebsiteHelpReply(message: string, force = false): ChatReply
     };
   }
 
-  if (/login|masuk|daftar|register|akun|dashboard|admin|toko/i.test(message)) {
+  if (/login|masuk|daftar|register|akun|dashboard|admin|akun\s+toko|dashboard\s+toko|kelola\s+toko/i.test(message)) {
     return {
       reply: "Akun toko dan admin digunakan untuk mengakses dashboard, sedangkan akun anggota langsung menuju katalog dan dapat menambahkan produk miliknya. Pendaftaran akun publik tidak dibuka; akun dibuat oleh pengelola website. Jika sudah memiliki akun, gunakan halaman Login.",
       source: "website",

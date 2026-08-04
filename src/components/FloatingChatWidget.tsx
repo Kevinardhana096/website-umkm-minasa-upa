@@ -1,11 +1,12 @@
 'use client';
 
-import React, { forwardRef, useImperativeHandle, useRef, useState } from 'react';
+import React, { forwardRef, useEffect, useImperativeHandle, useRef, useState } from 'react';
 import { Bot, MessageSquareText, Send, X } from 'lucide-react';
 import {
   buildFallbackChatReply,
   type ChatProductContext,
   type ChatReply,
+  type ChatSource,
   type ChatStoreContext,
 } from '@/lib/chat';
 import type { CatalogStore } from '@/lib/products';
@@ -15,10 +16,12 @@ interface ChatMessage {
   sender: 'bot' | 'user';
   text: string;
   whatsappUrl?: string;
+  sources?: ChatSource[];
 }
 
 interface ChatApiResponse extends ChatReply {
   error?: string;
+  retryAfterSeconds?: unknown;
 }
 
 interface FloatingChatWidgetProps {
@@ -32,6 +35,15 @@ export interface FloatingChatWidgetRef {
 
 function getWhatsAppUrl(number: string, message: string) {
   return `https://wa.me/${number}?text=${encodeURIComponent(message)}`;
+}
+
+function isSafeHttpUrl(value: string) {
+  try {
+    const url = new URL(value);
+    return url.protocol === 'http:' || url.protocol === 'https:';
+  } catch {
+    return false;
+  }
 }
 
 function toChatProduct(product: Product): ChatProductContext {
@@ -60,6 +72,7 @@ export const FloatingChatWidget = forwardRef<FloatingChatWidgetRef, FloatingChat
   const [isOpen, setIsOpen] = useState(false);
   const [contextProduct, setContextProduct] = useState<Product | null>(null);
   const [isReplying, setIsReplying] = useState(false);
+  const [retryAfterSeconds, setRetryAfterSeconds] = useState(0);
   const requestIdRef = useRef(0);
   const requestControllerRef = useRef<AbortController | null>(null);
   const [messages, setMessages] = useState<ChatMessage[]>([
@@ -70,7 +83,17 @@ export const FloatingChatWidget = forwardRef<FloatingChatWidgetRef, FloatingChat
   ]);
   const [inputText, setInputText] = useState('');
 
-  const appendBotReply = (payload: Pick<ChatReply, 'reply' | 'whatsappNumber' | 'whatsappMessage'>) => {
+  useEffect(() => {
+    if (retryAfterSeconds <= 0) return;
+
+    const timer = window.setTimeout(() => {
+      setRetryAfterSeconds((current) => Math.max(0, current - 1));
+    }, 1_000);
+
+    return () => window.clearTimeout(timer);
+  }, [retryAfterSeconds]);
+
+  const appendBotReply = (payload: Pick<ChatReply, 'reply' | 'sources' | 'whatsappNumber' | 'whatsappMessage'>) => {
     // The API decides whether a reply is actionable. Do not infer a seller CTA
     // merely because the conversation still has a product context; knowledge
     // and off-topic replies should not look like purchase recommendations.
@@ -79,7 +102,8 @@ export const FloatingChatWidget = forwardRef<FloatingChatWidgetRef, FloatingChat
       || `Halo ${store?.name ?? 'penjual'}, saya ingin bertanya tentang produk Anda.`;
     const whatsappUrl = whatsappNumber ? getWhatsAppUrl(whatsappNumber, whatsappMessage) : undefined;
 
-    setMessages((previous) => [...previous, { sender: 'bot', text: payload.reply, whatsappUrl }]);
+    const sources = payload.sources?.filter((source) => isSafeHttpUrl(source.url)).slice(0, 5);
+    setMessages((previous) => [...previous, { sender: 'bot', text: payload.reply, whatsappUrl, sources }]);
   };
 
   const requestBotReply = async (userMessage: string, product = contextProduct) => {
@@ -108,7 +132,14 @@ export const FloatingChatWidget = forwardRef<FloatingChatWidgetRef, FloatingChat
       const payload = await response.json().catch(() => ({})) as Partial<ChatApiResponse>;
       if (!response.ok) {
         if (requestId === requestIdRef.current) {
-          appendBotReply({ reply: typeof payload.error === 'string' ? payload.error : 'Asisten chat belum dapat menjawab saat ini.' });
+          const retrySeconds = response.status === 429 && typeof payload.retryAfterSeconds === 'number'
+            && Number.isFinite(payload.retryAfterSeconds)
+            ? Math.max(1, Math.ceil(payload.retryAfterSeconds))
+            : 0;
+          setRetryAfterSeconds(retrySeconds);
+          appendBotReply({
+            reply: `${typeof payload.error === 'string' ? payload.error : 'Asisten chat belum dapat menjawab saat ini.'}${retrySeconds > 0 ? ` Coba lagi dalam ${retrySeconds} detik.` : ''}`,
+          });
         }
         return;
       }
@@ -118,6 +149,7 @@ export const FloatingChatWidget = forwardRef<FloatingChatWidgetRef, FloatingChat
       if (requestId !== requestIdRef.current) return;
       appendBotReply({
         reply: payload.reply,
+        sources: payload.sources,
         whatsappNumber: payload.whatsappNumber,
         whatsappMessage: payload.whatsappMessage,
       });
@@ -145,7 +177,7 @@ export const FloatingChatWidget = forwardRef<FloatingChatWidgetRef, FloatingChat
   const handleSend = (event: React.FormEvent) => {
     event.preventDefault();
     const userMessage = inputText.trim();
-    if (!userMessage || isReplying) return;
+    if (!userMessage || isReplying || retryAfterSeconds > 0) return;
 
     setInputText('');
     void requestBotReply(userMessage);
@@ -169,6 +201,20 @@ export const FloatingChatWidget = forwardRef<FloatingChatWidgetRef, FloatingChat
                 <div className={`max-w-[85%] sm:max-w-[82%] rounded-2xl px-3.5 py-2.5 text-xs leading-relaxed ${message.sender === 'user' ? 'rounded-br-none bg-[#0F2C23] text-white' : 'rounded-bl-none border border-gray-200 bg-white text-gray-800 shadow-sm'}`}>
                   <p>{message.text}</p>
                   {message.whatsappUrl && <a href={message.whatsappUrl} target="_blank" rel="noreferrer" className="mt-2 inline-flex rounded-lg bg-[#25D366] px-2.5 py-1.5 text-[11px] font-bold text-white hover:bg-[#1ebe5d]">Chat penjual di WhatsApp</a>}
+                  {message.sources && message.sources.length > 0 && (
+                    <div className="mt-2 border-t border-gray-100 pt-2">
+                      <p className="mb-1 text-[10px] font-semibold text-gray-500">Sumber web</p>
+                      <ul className="space-y-1">
+                        {message.sources.map((source) => (
+                          <li key={source.url}>
+                            <a href={source.url} target="_blank" rel="noreferrer" className="text-[10px] text-[#963E1B] underline hover:text-[#803214]">
+                              {source.title}
+                            </a>
+                          </li>
+                        ))}
+                      </ul>
+                    </div>
+                  )}
                 </div>
               </div>
             ))}
@@ -176,8 +222,8 @@ export const FloatingChatWidget = forwardRef<FloatingChatWidgetRef, FloatingChat
           </div>
 
           <form onSubmit={handleSend} className="flex gap-2 border-t border-gray-100 bg-white p-3">
-            <input aria-label="Pesan untuk asisten UMKM" type="text" value={inputText} onChange={(event) => setInputText(event.target.value)} placeholder={isReplying ? "Menyiapkan jawaban..." : "Tulis pesan..."} disabled={isReplying} className="flex-1 rounded-xl bg-gray-100 px-3 py-2 text-xs focus:outline-none focus:ring-1 focus:ring-[#963E1B] disabled:cursor-not-allowed disabled:opacity-60" />
-            <button type="submit" disabled={isReplying} className="rounded-xl bg-[#963E1B] p-2.5 text-white transition-colors hover:bg-[#803214] disabled:cursor-not-allowed disabled:opacity-60" aria-label="Kirim pesan"><Send className="h-4 w-4" /></button>
+            <input aria-label="Pesan untuk asisten UMKM" type="text" value={inputText} onChange={(event) => setInputText(event.target.value)} placeholder={isReplying ? "Menyiapkan jawaban..." : retryAfterSeconds > 0 ? `Coba lagi dalam ${retryAfterSeconds} detik...` : "Tulis pesan..."} disabled={isReplying || retryAfterSeconds > 0} className="flex-1 rounded-xl bg-gray-100 px-3 py-2 text-xs focus:outline-none focus:ring-1 focus:ring-[#963E1B] disabled:cursor-not-allowed disabled:opacity-60" />
+            <button type="submit" disabled={isReplying || retryAfterSeconds > 0} className="rounded-xl bg-[#963E1B] p-2.5 text-white transition-colors hover:bg-[#803214] disabled:cursor-not-allowed disabled:opacity-60" aria-label="Kirim pesan"><Send className="h-4 w-4" /></button>
           </form>
         </div>
       )}

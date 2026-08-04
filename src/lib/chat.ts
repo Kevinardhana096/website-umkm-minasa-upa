@@ -33,6 +33,7 @@ export interface ChatSource {
 
 export interface ChatReply {
   reply: string;
+  sources?: ChatSource[];
   whatsappNumber?: string;
   whatsappMessage?: string;
   source: "catalog" | "knowledge" | "website" | "ai" | "web" | "fallback" | "scope";

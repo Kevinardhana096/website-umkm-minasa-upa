@@ -1,4 +1,6 @@
 import { NextResponse } from "next/server";
+import { Ratelimit } from "@upstash/ratelimit";
+import { Redis } from "@upstash/redis";
 import { getPublicCatalog } from "@/lib/catalog";
 import { getCachedWebReply, saveWebReplyToCache } from "@/lib/chat-cache";
 import { parseChatIntent, type ChatIntentResult, type ChatIntentRoute } from "@/lib/chat-intent";
@@ -34,8 +36,11 @@ export const runtime = "nodejs";
 const MAX_MESSAGE_LENGTH = 800;
 const MAX_REQUEST_BODY_BYTES = 64 * 1024;
 const RATE_LIMIT_WINDOW_MS = 60_000;
+const RATE_LIMIT_WINDOW_SECONDS = 60;
 const RATE_LIMIT_MAX_REQUESTS = 20;
+const RATE_LIMIT_MAX_KEYS = 10_000;
 const requestLog = new Map<string, { count: number; resetAt: number }>();
+let distributedRateLimiter: Ratelimit | null | undefined;
 
 type ChatProviderName = "gemini" | "grok" | "mistral" | "cerebras";
 
@@ -70,22 +75,71 @@ interface ChatHistoryItem {
 }
 
 function getClientKey(request: Request) {
-  return request.headers.get("x-forwarded-for")?.split(",")[0]?.trim()
-    || request.headers.get("x-real-ip")
-    || "anonymous";
+  return (
+    request.headers.get("x-vercel-forwarded-for")?.split(",")[0]?.trim()
+    || request.headers.get("x-real-ip")?.trim()
+    || request.headers.get("x-forwarded-for")?.split(",")[0]?.trim()
+    || "anonymous"
+  ).slice(0, 128);
 }
 
-function isRateLimited(key: string) {
+function getLocalRateLimitRetryAfter(key: string) {
   const now = Date.now();
+  for (const [storedKey, entry] of requestLog) {
+    if (entry.resetAt <= now) requestLog.delete(storedKey);
+  }
+
+  while (requestLog.size >= RATE_LIMIT_MAX_KEYS && requestLog.size > 0) {
+    const oldestKey = requestLog.keys().next().value as string | undefined;
+    if (!oldestKey) break;
+    requestLog.delete(oldestKey);
+  }
+
   const current = requestLog.get(key);
   if (!current || current.resetAt <= now) {
     requestLog.set(key, { count: 1, resetAt: now + RATE_LIMIT_WINDOW_MS });
-    return false;
+    return 0;
   }
 
-  if (current.count >= RATE_LIMIT_MAX_REQUESTS) return true;
+  if (current.count >= RATE_LIMIT_MAX_REQUESTS) {
+    return Math.max(1, Math.ceil((current.resetAt - now) / 1_000));
+  }
   current.count += 1;
-  return false;
+  return 0;
+}
+
+function getDistributedRateLimiter() {
+  if (distributedRateLimiter !== undefined) return distributedRateLimiter;
+
+  const url = process.env.UPSTASH_REDIS_REST_URL;
+  const token = process.env.UPSTASH_REDIS_REST_TOKEN;
+  if (!url || !token) {
+    distributedRateLimiter = null;
+    return distributedRateLimiter;
+  }
+
+  distributedRateLimiter = new Ratelimit({
+    redis: new Redis({ url, token }),
+    limiter: Ratelimit.slidingWindow(RATE_LIMIT_MAX_REQUESTS, `${RATE_LIMIT_WINDOW_SECONDS} s`),
+    prefix: "umkm-chat",
+  });
+  return distributedRateLimiter;
+}
+
+async function getRateLimitRetryAfter(key: string) {
+  const limiter = getDistributedRateLimiter();
+  if (limiter) {
+    try {
+      const result = await limiter.limit(key);
+      if (result.success) return 0;
+
+      return Math.max(1, Math.ceil((result.reset - Date.now()) / 1_000));
+    } catch (error) {
+      console.error("Upstash rate limit tidak dapat dihubungi, memakai limiter lokal:", error instanceof Error ? error.message : error);
+    }
+  }
+
+  return getLocalRateLimitRetryAfter(key);
 }
 
 function toChatProduct(product: Product): ChatProductContext {
@@ -682,18 +736,32 @@ async function requestProviderChain(message: string, context: string, history: C
 }
 
 export async function POST(request: Request) {
-  if (isRateLimited(getClientKey(request))) {
-    return NextResponse.json({ error: "Terlalu banyak pertanyaan. Silakan coba lagi sebentar." }, { status: 429 });
-  }
-
-  const contentLength = Number(request.headers.get("content-length"));
-  if (Number.isFinite(contentLength) && contentLength > MAX_REQUEST_BODY_BYTES) {
-    return NextResponse.json({ error: "Ukuran request chat terlalu besar." }, { status: 413 });
+  const retryAfterSeconds = await getRateLimitRetryAfter(getClientKey(request));
+  if (retryAfterSeconds > 0) {
+    return NextResponse.json(
+      {
+        error: "Batas pertanyaan sementara tercapai. Silakan coba lagi sebentar.",
+        retryAfterSeconds,
+      },
+      {
+        status: 429,
+        headers: { "Retry-After": String(retryAfterSeconds) },
+      },
+    );
   }
 
   let body: ChatRequestBody;
   try {
-    body = await request.json();
+    const rawBody = await request.arrayBuffer();
+    if (rawBody.byteLength > MAX_REQUEST_BODY_BYTES) {
+      return NextResponse.json({ error: "Ukuran request chat terlalu besar." }, { status: 413 });
+    }
+
+    const parsedBody = JSON.parse(new TextDecoder("utf-8", { fatal: true }).decode(rawBody)) as unknown;
+    if (!parsedBody || typeof parsedBody !== "object" || Array.isArray(parsedBody)) {
+      return NextResponse.json({ error: "Format request chat tidak valid." }, { status: 400 });
+    }
+    body = parsedBody as ChatRequestBody;
   } catch {
     return NextResponse.json({ error: "Format request chat tidak valid." }, { status: 400 });
   }
@@ -711,10 +779,11 @@ export async function POST(request: Request) {
   const clientProduct = parseClientProduct(body.product);
   const clientStore = parseClientStore(body.store);
   const history = parseClientHistory(body.history);
+  const allowClientCatalogFallback = process.env.NODE_ENV !== "production";
   const productId = typeof body.product_id === "string" ? body.product_id : undefined;
   const requestedProduct = productId
-    ? catalogProducts.find((product) => product.id === productId) ?? (catalog === null ? clientProduct : undefined)
-    : catalog === null ? clientProduct : undefined;
+    ? catalogProducts.find((product) => product.id === productId) ?? (catalog === null && allowClientCatalogFallback ? clientProduct : undefined)
+    : catalog === null && allowClientCatalogFallback ? clientProduct : undefined;
   const store = catalog?.store
     ? {
         name: catalog.store.name,
@@ -722,7 +791,7 @@ export async function POST(request: Request) {
         description: catalog.store.description,
         whatsappNumber: catalog.store.whatsappNumber,
       }
-    : catalog === null ? clientStore : undefined;
+    : catalog === null && allowClientCatalogFallback ? clientStore : undefined;
   const relevantProduct = findRelevantProduct(message, catalogProducts, requestedProduct, history.map((item) => item.content));
   const knowledgeReply = !relevantProduct ? buildPublicKnowledgeReply(message) : null;
   if (knowledgeReply) return NextResponse.json(knowledgeReply);
@@ -784,6 +853,7 @@ export async function POST(request: Request) {
         reply: cachedWebReply.reply,
         source: "web",
         provider: cachedWebReply.provider,
+        sources: cachedWebReply.sources,
         cached: true,
         cachedAt: cachedWebReply.fetchedAt,
       });
@@ -808,6 +878,7 @@ export async function POST(request: Request) {
         reply: webReply.reply,
         source: "web",
         provider: webProvider,
+        sources: webReply.sources,
       });
     }
 

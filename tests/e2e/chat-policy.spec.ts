@@ -1,4 +1,6 @@
 import { expect, test, type APIRequestContext } from "@playwright/test";
+import { buildPublicKnowledgeReply } from "../../src/lib/knowledge";
+import { buildWebsiteHelpReply } from "../../src/lib/site-knowledge";
 
 async function ask(request: APIRequestContext, message: string, extra: Record<string, unknown> = {}) {
   const response = await request.post("/api/chat", {
@@ -10,6 +12,73 @@ async function ask(request: APIRequestContext, message: string, extra: Record<st
 }
 
 test.describe("chat policy", () => {
+  test("pertanyaan memilih toko di katalog tidak diarahkan ke bantuan akun", () => {
+    const response = buildWebsiteHelpReply("Bagaimana cara memilih toko di katalog?");
+
+    expect(response?.source).toBe("website");
+    expect(response?.reply).toContain("katalog produk");
+    expect(response?.reply).not.toContain("Akun toko dan admin");
+  });
+
+  test("pertanyaan kondisi hari ini tidak memakai knowledge statis", () => {
+    const response = buildPublicKnowledgeReply("Bagaimana kondisi UMKM Minasa Upa hari ini?");
+
+    expect(response).toBeNull();
+  });
+
+  test("widget menampilkan hanya sumber web dengan URL aman", async ({ page }) => {
+    await page.route("**/api/chat", async (route) => {
+      await route.fulfill({
+        status: 200,
+        contentType: "application/json",
+        body: JSON.stringify({
+          reply: "Jawaban terbaru dari web.",
+          source: "web",
+          sources: [
+            { title: "Sumber tepercaya", url: "https://example.com/source" },
+            { title: "Sumber tidak aman", url: "javascript:alert(1)" },
+          ],
+        }),
+      });
+    });
+
+    await page.goto("/profil");
+    await page.getByRole("button", { name: "Buka chat" }).click();
+    const chat = page.getByRole("dialog", { name: "Asisten UMKM Bot" });
+    const input = page.getByLabel("Pesan untuk asisten UMKM");
+
+    await input.fill("Apa kabar terbaru?");
+    await input.press("Enter");
+    await expect(chat).toContainText("Sumber web");
+    await expect(chat.getByRole("link", { name: "Sumber tepercaya" })).toHaveAttribute("href", "https://example.com/source");
+    await expect(chat.getByRole("link", { name: "Sumber tidak aman" })).toHaveCount(0);
+  });
+
+  test("widget memberi countdown saat API mengembalikan rate limit", async ({ page }) => {
+    await page.route("**/api/chat", async (route) => {
+      await route.fulfill({
+        status: 429,
+        headers: { "Retry-After": "5" },
+        contentType: "application/json",
+        body: JSON.stringify({
+          error: "Batas pertanyaan sementara tercapai.",
+          retryAfterSeconds: 5,
+        }),
+      });
+    });
+
+    await page.goto("/profil");
+    await page.getByRole("button", { name: "Buka chat" }).click();
+    const chat = page.getByRole("dialog", { name: "Asisten UMKM Bot" });
+    const input = page.getByLabel("Pesan untuk asisten UMKM");
+
+    await input.fill("Tes batas request");
+    await input.press("Enter");
+    await expect(chat).toContainText("Batas pertanyaan sementara tercapai");
+    await expect(input).toBeDisabled();
+    await expect(input).toHaveAttribute("placeholder", /Coba lagi dalam 5 detik/);
+  });
+
   test("memesan dan membeli memakai jawaban pembelian yang sama", async ({ request }) => {
     const [buying, ordering] = await Promise.all([
       ask(request, "Bagaimana cara membeli produk?"),

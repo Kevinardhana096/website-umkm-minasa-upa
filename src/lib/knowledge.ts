@@ -23,7 +23,7 @@ const BUSINESS_CONTEXT = [
 ].join(" ");
 
 function hasLatestIntent(message: string) {
-  return /terbaru|terkini|haris+ini|sekarang|update|berita|riwayat|jadwal|harga|stok|tersedia|kontak|whatsapp|nomor/i.test(message);
+  return /terbaru|terkini|hari\s+ini|sekarang|update|berita|riwayat|jadwal|harga|stok|tersedia|kontak|whatsapp|nomor/i.test(message);
 }
 
 function asksAboutVillage(message: string) {
