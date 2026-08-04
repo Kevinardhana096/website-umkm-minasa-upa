@@ -27,7 +27,7 @@ export interface NewProductInput {
 
 export interface StoreData {
   user: User;
-  store: StoreRow;
+  store: StoreRow | null;
   products: ProductRow[];
 }
 
@@ -37,6 +37,14 @@ export interface StoreProfileInput {
   description: string;
   whatsappNumber: string;
   isActive: boolean;
+}
+
+export function isStoreProfileComplete(store: StoreRow | null | undefined): store is StoreRow {
+  if (!store) return false;
+
+  return store.name.trim().length >= 2
+    && store.seller_name.trim().length >= 2
+    && store.whatsapp_number.replace(/\D/g, "").length >= 8;
 }
 
 export async function getCurrentStoreData(): Promise<StoreData> {
@@ -65,44 +73,8 @@ export async function getCurrentStoreData(): Promise<StoreData> {
 
   if (storeError) throw storeError;
 
-  let store = existingStore as StoreRow | null;
-  if (!store) {
-    const metadata = user.user_metadata ?? {};
-    const storeName = typeof metadata.store_name === "string" ? metadata.store_name : "Toko UMKM";
-    const sellerName = typeof metadata.seller_name === "string"
-      ? metadata.seller_name
-      : typeof metadata.full_name === "string"
-        ? metadata.full_name
-        : "Pemilik Toko";
-    const whatsappNumber = typeof metadata.whatsapp_number === "string" ? metadata.whatsapp_number : "";
-
-    const { data: createdStore, error: createError } = await supabase
-      .from("stores")
-      .insert({
-        owner_id: user.id,
-        name: storeName,
-        seller_name: sellerName,
-        whatsapp_number: whatsappNumber,
-      })
-      .select("id, owner_id, name, seller_name, description, whatsapp_number, is_active")
-      .single();
-
-    if (createError) {
-      // The dashboard can request the store data more than once during the
-      // initial render. If another request created the row first, reuse it
-      // instead of surfacing the unique-constraint error to the user.
-      const { data: concurrentStore, error: concurrentStoreError } = await supabase
-        .from("stores")
-        .select("id, owner_id, name, seller_name, description, whatsapp_number, is_active")
-        .eq("owner_id", user.id)
-        .maybeSingle();
-
-      if (concurrentStoreError || !concurrentStore) throw createError;
-      store = concurrentStore as StoreRow;
-    } else {
-      store = createdStore as StoreRow;
-    }
-  }
+  const store = existingStore as StoreRow | null;
+  if (!store) return { user, store: null, products: [] };
 
   const { data: products, error: productsError } = await supabase
     .from("products")
@@ -116,7 +88,7 @@ export async function getCurrentStoreData(): Promise<StoreData> {
   return { user, store, products: normalizeProductRows(products) };
 }
 
-export async function updateCurrentStore(storeId: string, input: StoreProfileInput) {
+function normalizeStoreProfileInput(input: StoreProfileInput) {
   const name = input.name.trim();
   const sellerName = input.sellerName.trim();
   const description = input.description.trim();
@@ -125,6 +97,40 @@ export async function updateCurrentStore(storeId: string, input: StoreProfileInp
   if (name.length < 2) throw new Error("Nama toko minimal 2 karakter.");
   if (sellerName.length < 2) throw new Error("Nama penjual minimal 2 karakter.");
   if (whatsappNumber.length < 8) throw new Error("Nomor WhatsApp belum valid.");
+
+  return { name, sellerName, description, whatsappNumber };
+}
+
+export async function createCurrentStore(input: StoreProfileInput) {
+  const { name, sellerName, description, whatsappNumber } = normalizeStoreProfileInput(input);
+  const supabase = createClient();
+  const { data: userData, error: userError } = await supabase.auth.getUser();
+  if (userError) throw userError;
+  if (!userData.user) throw new Error("Sesi login tidak ditemukan.");
+
+  const { data, error } = await supabase
+    .from("stores")
+    .insert({
+      owner_id: userData.user.id,
+      name,
+      seller_name: sellerName,
+      description: description || null,
+      whatsapp_number: whatsappNumber,
+      is_active: input.isActive,
+    })
+    .select("id, owner_id, name, seller_name, description, whatsapp_number, is_active")
+    .single<StoreRow>();
+
+  if (error) {
+    if (error.code === "23505") throw new Error("Profil toko sudah dibuat. Silakan muat ulang halaman.");
+    throw error;
+  }
+
+  return data;
+}
+
+export async function updateCurrentStore(storeId: string, input: StoreProfileInput) {
+  const { name, sellerName, description, whatsappNumber } = normalizeStoreProfileInput(input);
 
   const supabase = createClient();
   const { data, error } = await supabase

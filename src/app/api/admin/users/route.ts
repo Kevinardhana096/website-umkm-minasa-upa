@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
 import { createClient as createSupabaseClient } from "@supabase/supabase-js";
 import { createClient } from "@/lib/supabase/server";
+import { getPasswordValidationError, isValidPassword } from "@/lib/password-validation";
 
 export const dynamic = "force-dynamic";
 
@@ -127,7 +128,7 @@ export async function POST(request: Request) {
   const serviceClient = getServiceClient();
   if (!serviceClient) return jsonError("SUPABASE_SERVICE_ROLE_KEY belum dikonfigurasi di server.", 503);
 
-  let body: { email?: string; password?: string; full_name?: string; role?: Role };
+  let body: { email?: string; password?: string; password_confirmation?: string; full_name?: string; role?: Role };
   try {
     body = await request.json();
   } catch {
@@ -136,10 +137,13 @@ export async function POST(request: Request) {
 
   const email = body.email?.trim().toLowerCase();
   const password = body.password ?? "";
+  const passwordConfirmation = body.password_confirmation ?? "";
   const fullName = body.full_name?.trim() ?? "";
   const role = body.role ?? "toko";
   if (!email || !email.includes("@")) return jsonError("Email user tidak valid.", 400);
-  if (password.length < 6) return jsonError("Password minimal 6 karakter.", 400);
+  const passwordError = getPasswordValidationError(password);
+  if (passwordError) return jsonError(passwordError, 400);
+  if (password !== passwordConfirmation) return jsonError("Konfirmasi password tidak cocok.", 400);
   if (role !== "toko" && role !== "admin") return jsonError("Role tidak valid.", 400);
 
   const { data, error } = await serviceClient.auth.admin.createUser({
@@ -202,7 +206,9 @@ export async function PATCH(request: Request) {
   }
 
   if (action === "reset_password") {
-    if (!body.password || body.password.length < 6) return jsonError("Password baru minimal 6 karakter.", 400);
+    if (!isValidPassword(body.password)) {
+      return jsonError(getPasswordValidationError(body.password) ?? "Password baru tidak valid.", 400);
+    }
     const { error } = await serviceClient.auth.admin.updateUserById(userId, { password: body.password });
     if (error) return jsonError("Password user gagal direset.", 400);
     await recordUserAudit(serviceClient, admin.userId, "reset_password", userId);

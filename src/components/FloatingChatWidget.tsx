@@ -2,7 +2,13 @@
 
 import React, { forwardRef, useImperativeHandle, useState } from 'react';
 import { Bot, MessageSquareText, Send, X } from 'lucide-react';
-import { formatRupiah } from '@/lib/products';
+import {
+  buildFallbackChatReply,
+  type ChatProductContext,
+  type ChatReply,
+  type ChatSource,
+  type ChatStoreContext,
+} from '@/lib/chat';
 import type { CatalogStore } from '@/lib/products';
 import type { Product } from '@/types/product';
 
@@ -10,6 +16,11 @@ interface ChatMessage {
   sender: 'bot' | 'user';
   text: string;
   whatsappUrl?: string;
+  sources?: ChatSource[];
+}
+
+interface ChatApiResponse extends ChatReply {
+  error?: string;
 }
 
 interface FloatingChatWidgetProps {
@@ -25,9 +36,32 @@ function getWhatsAppUrl(number: string, message: string) {
   return `https://wa.me/${number}?text=${encodeURIComponent(message)}`;
 }
 
+function toChatProduct(product: Product): ChatProductContext {
+  return {
+    id: product.id,
+    name: product.name,
+    merchantName: product.merchantName,
+    description: product.description,
+    price: product.price,
+    isAvailable: product.isAvailable !== false,
+    whatsappNumber: product.whatsappNumber,
+  };
+}
+
+function toChatStore(store?: CatalogStore | null): ChatStoreContext | undefined {
+  if (!store) return undefined;
+  return {
+    name: store.name,
+    sellerName: store.sellerName,
+    description: store.description,
+    whatsappNumber: store.whatsappNumber,
+  };
+}
+
 export const FloatingChatWidget = forwardRef<FloatingChatWidgetRef, FloatingChatWidgetProps>(({ store }, ref) => {
   const [isOpen, setIsOpen] = useState(false);
   const [contextProduct, setContextProduct] = useState<Product | null>(null);
+  const [isReplying, setIsReplying] = useState(false);
   const [messages, setMessages] = useState<ChatMessage[]>([
     {
       sender: 'bot',
@@ -36,66 +70,68 @@ export const FloatingChatWidget = forwardRef<FloatingChatWidgetRef, FloatingChat
   ]);
   const [inputText, setInputText] = useState('');
 
+  const appendBotReply = (payload: Pick<ChatReply, 'reply' | 'whatsappNumber' | 'whatsappMessage' | 'sources'>, product?: Product | null) => {
+    const whatsappNumber = payload.whatsappNumber?.trim() || product?.whatsappNumber?.trim() || store?.whatsappNumber?.trim();
+    const whatsappMessage = payload.whatsappMessage
+      || (product
+        ? `Halo, saya ingin bertanya tentang produk ${product.name}.`
+        : `Halo ${store?.name ?? 'penjual'}, saya ingin bertanya tentang produk Anda.`);
+    const whatsappUrl = whatsappNumber ? getWhatsAppUrl(whatsappNumber, whatsappMessage) : undefined;
+
+    setMessages((previous) => [...previous, { sender: 'bot', text: payload.reply, whatsappUrl, sources: payload.sources }]);
+  };
+
+  const requestBotReply = async (userMessage: string, product = contextProduct) => {
+    const productContext = product ? toChatProduct(product) : undefined;
+    const storeContext = toChatStore(store);
+    setMessages((previous) => [...previous, { sender: 'user', text: userMessage }]);
+    setIsReplying(true);
+
+    try {
+      const response = await fetch('/api/chat', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          message: userMessage,
+          product_id: product?.id,
+          product: productContext,
+          store: storeContext,
+        }),
+      });
+      const payload = await response.json().catch(() => ({})) as Partial<ChatApiResponse>;
+      if (!response.ok || typeof payload.reply !== 'string') {
+        throw new Error(payload.error || 'Asisten chat belum dapat menjawab.');
+      }
+      appendBotReply({
+        reply: payload.reply,
+        whatsappNumber: payload.whatsappNumber,
+        whatsappMessage: payload.whatsappMessage,
+        sources: payload.sources,
+      }, product);
+    } catch {
+      const fallback = buildFallbackChatReply(userMessage, productContext, storeContext);
+      appendBotReply(fallback, product);
+    } finally {
+      setIsReplying(false);
+    }
+  };
+
   useImperativeHandle(ref, () => ({
     openChat: () => setIsOpen(true),
     askAboutProduct: (product: Product) => {
       setContextProduct(product);
       setIsOpen(true);
-
-      const whatsappNumber = product.whatsappNumber?.trim();
-      const whatsappUrl = whatsappNumber
-        ? getWhatsAppUrl(whatsappNumber, `Halo, saya ingin bertanya tentang produk ${product.name}.`)
-        : undefined;
-      const price = formatRupiah(product.price);
-
-      setMessages((previous) => [
-        ...previous,
-        { sender: 'user', text: `Tolong jelaskan produk "${product.name}".` },
-        {
-          sender: 'bot',
-          text: whatsappNumber
-            ? `Produk "${product.name}" dari ${product.merchantName} memiliki harga ${price}. Nomor WhatsApp penjual: +${whatsappNumber}.`
-            : `Produk "${product.name}" dari ${product.merchantName} memiliki harga ${price}. Nomor WhatsApp penjual belum tersedia.`,
-          whatsappUrl,
-        },
-      ]);
+      void requestBotReply(`Tolong jelaskan produk "${product.name}".`, product);
     },
   }));
 
   const handleSend = (event: React.FormEvent) => {
     event.preventDefault();
     const userMessage = inputText.trim();
-    if (!userMessage) return;
+    if (!userMessage || isReplying) return;
 
-    setMessages((previous) => [...previous, { sender: 'user', text: userMessage }]);
     setInputText('');
-
-    const whatsappNumber = contextProduct?.whatsappNumber?.trim() || store?.whatsappNumber?.trim() || '';
-    const asksForContact = /whatsapp|\bwa\b|nomor|kontak|hubung/i.test(userMessage);
-    const whatsappUrl = whatsappNumber
-      ? getWhatsAppUrl(
-          whatsappNumber,
-          contextProduct
-            ? `Halo, saya ingin bertanya tentang produk ${contextProduct.name}.`
-            : `Halo ${store?.name ?? 'penjual'}, saya ingin bertanya tentang produk Anda.`,
-        )
-      : undefined;
-
-    let botReply = contextProduct
-      ? `Saya bisa membantu menjelaskan "${contextProduct.name}". Untuk informasi stok atau detail pesanan terbaru, Anda dapat menghubungi penjual langsung.`
-      : 'Silakan pilih produk untuk melihat detailnya, atau tanyakan informasi umum tentang katalog UMKM Wanita Tangguh Minasa Upa ini.';
-
-    if (asksForContact) {
-      botReply = whatsappNumber
-        ? `Nomor WhatsApp penjual${contextProduct ? ` untuk produk "${contextProduct.name}"` : ''} adalah +${whatsappNumber}.`
-        : 'Nomor WhatsApp penjual belum tersedia pada katalog ini.';
-    } else if (/harga|diskon/i.test(userMessage) && contextProduct) {
-      botReply = `Harga "${contextProduct.name}" saat ini ${formatRupiah(contextProduct.price)}. Untuk diskon atau pembelian jumlah banyak, silakan hubungi penjual.`;
-    }
-
-    window.setTimeout(() => {
-      setMessages((previous) => [...previous, { sender: 'bot', text: botReply, whatsappUrl }]);
-    }, 300);
+    void requestBotReply(userMessage);
   };
 
   return (
@@ -115,20 +151,33 @@ export const FloatingChatWidget = forwardRef<FloatingChatWidgetRef, FloatingChat
               <div key={`${message.sender}-${index}`} className={`flex ${message.sender === 'user' ? 'justify-end' : 'justify-start'}`}>
                 <div className={`max-w-[85%] sm:max-w-[82%] rounded-2xl px-3.5 py-2.5 text-xs leading-relaxed ${message.sender === 'user' ? 'rounded-br-none bg-[#0F2C23] text-white' : 'rounded-bl-none border border-gray-200 bg-white text-gray-800 shadow-sm'}`}>
                   <p>{message.text}</p>
+                  {message.sources && message.sources.length > 0 && (
+                    <div className="mt-2 border-t border-gray-100 pt-2 text-[10px]">
+                      <p className="mb-1 font-semibold text-gray-500">Sumber web:</p>
+                      <div className="space-y-1">
+                        {message.sources.map((source) => (
+                          <a key={source.url} href={source.url} target="_blank" rel="noreferrer" title={source.url} className="block truncate text-[#963E1B] underline hover:text-[#803214]">
+                            {source.title}
+                          </a>
+                        ))}
+                      </div>
+                    </div>
+                  )}
                   {message.whatsappUrl && <a href={message.whatsappUrl} target="_blank" rel="noreferrer" className="mt-2 inline-flex rounded-lg bg-[#25D366] px-2.5 py-1.5 text-[11px] font-bold text-white hover:bg-[#1ebe5d]">Chat penjual di WhatsApp</a>}
                 </div>
               </div>
             ))}
+            {isReplying && <div className="flex justify-start"><div className="rounded-2xl rounded-bl-none border border-gray-200 bg-white px-3.5 py-2.5 text-xs text-gray-500 shadow-sm">Asisten sedang menyiapkan jawaban...</div></div>}
           </div>
 
           <form onSubmit={handleSend} className="flex gap-2 border-t border-gray-100 bg-white p-3">
-            <input aria-label="Pesan untuk asisten UMKM" type="text" value={inputText} onChange={(event) => setInputText(event.target.value)} placeholder="Tulis pesan..." className="flex-1 rounded-xl bg-gray-100 px-3 py-2 text-xs focus:outline-none focus:ring-1 focus:ring-[#963E1B]" />
-            <button type="submit" className="rounded-xl bg-[#963E1B] p-2.5 text-white transition-colors hover:bg-[#803214]" aria-label="Kirim pesan"><Send className="h-4 w-4" /></button>
+            <input aria-label="Pesan untuk asisten UMKM" type="text" value={inputText} onChange={(event) => setInputText(event.target.value)} placeholder={isReplying ? "Menyiapkan jawaban..." : "Tulis pesan..."} disabled={isReplying} className="flex-1 rounded-xl bg-gray-100 px-3 py-2 text-xs focus:outline-none focus:ring-1 focus:ring-[#963E1B] disabled:cursor-not-allowed disabled:opacity-60" />
+            <button type="submit" disabled={isReplying} className="rounded-xl bg-[#963E1B] p-2.5 text-white transition-colors hover:bg-[#803214] disabled:cursor-not-allowed disabled:opacity-60" aria-label="Kirim pesan"><Send className="h-4 w-4" /></button>
           </form>
         </div>
       )}
 
-      <button onClick={() => setIsOpen((open) => !open)} className="group flex h-12 w-12 sm:h-14 sm:w-14 items-center justify-center rounded-full bg-[#963E1B] text-white shadow-xl transition-all hover:bg-[#803214] active:scale-95" aria-label="Buka chat">
+      <button onClick={() => setIsOpen((open) => !open)} className="group flex h-12 w-12 sm:h-14 sm:w-14 items-center justify-center rounded-full bg-[#963E1B] text-white shadow-xl transition-all hover:bg-[#803214] active:scale-95" aria-label={isOpen ? 'Tutup chat' : 'Buka chat'}>
         {isOpen ? <X className="h-5 w-5 sm:h-6 sm:w-6" /> : <MessageSquareText className="h-5 w-5 sm:h-6 sm:w-6 transition-transform group-hover:scale-110" />}
       </button>
     </div>

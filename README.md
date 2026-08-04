@@ -41,6 +41,26 @@ Client Supabase tersedia di `src/lib/supabase/client.ts` untuk Client Components
 
 Jangan memasukkan secret/service-role key ke variabel `NEXT_PUBLIC_*` atau ke kode browser.
 
+## Chat katalog
+
+Chat katalog menggunakan endpoint server `/api/chat`. Pertanyaan tentang harga, ketersediaan, dan kontak dijawab langsung dari data katalog publik. Profil publik Desa Minasa Upa, kelompok UMKM, produk, dan kondisi usaha diambil dari knowledge terkurasi proyek; pertanyaan yang meminta informasi terbaru memakai Google Search grounding Gemini lalu Mistral `web_search` sebagai fallback. Pertanyaan bebas lainnya dapat diteruskan ke rangkaian provider AI yang kompatibel dengan format OpenAI Chat Completions.
+
+Tanpa konfigurasi provider AI, chat tetap berfungsi menggunakan retrieval katalog dan fallback rule-based. Untuk mengaktifkan fallback Gemini → Mistral, tambahkan key dan model provider yang diperlukan ke `.env.local` atau Environment Variables Vercel, lalu restart/deploy aplikasi:
+
+```env
+AI_CHAT_PROVIDER_ORDER=gemini,mistral
+GEMINI_API_URL=https://generativelanguage.googleapis.com/v1beta/openai/chat/completions
+GEMINI_API_KEY=server-only-gemini-key
+GEMINI_MODEL=your-gemini-model
+MISTRAL_API_KEY=server-only-mistral-key
+MISTRAL_MODEL=your-mistral-model
+# Opsional: fallback web search native Mistral
+MISTRAL_CONVERSATIONS_API_URL=https://api.mistral.ai/v1/conversations
+# MISTRAL_WEB_SEARCH_MODEL=your-mistral-web-search-model
+```
+
+Konfigurasi lama `AI_CHAT_API_URL`, `AI_CHAT_API_KEY`, dan `AI_CHAT_MODEL` tetap diterima sebagai konfigurasi Gemini utama. Semua API key tidak boleh menggunakan awalan `NEXT_PUBLIC_` dan tidak pernah dikirim ke browser. Knowledge profil dipakai untuk pertanyaan statis; angka profil diberi konteks sebagai snapshot dokumen dan bukan data real-time. Pertanyaan terbaru memakai native Gemini `generateContent` dengan `google_search`; jika gagal, sistem mencoba Mistral Conversations API dengan `web_search`. Keduanya memiliki timeout 12 detik dan mengembalikan maksimal 5 sumber. Endpoint membatasi pertanyaan maksimal 800 karakter, sekitar 20 request per alamat IP per menit, dan waktu tunggu provider 8 detik.
+
 > Penting: halaman `/register` hanya menutup pendaftaran dari sisi aplikasi. Menonaktifkan public sign-up di pengaturan Supabase tetap wajib agar endpoint Auth tidak dapat digunakan untuk membuat akun publik.
 
 ## Membuat akun admin
@@ -89,6 +109,16 @@ Repository ini siap dideploy dari branch `main` tanpa file konfigurasi Vercel ta
    NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY=your-publishable-key
    # Hanya jika menu Manajemen user admin digunakan:
    SUPABASE_SERVICE_ROLE_KEY=your-service-role-key
+   # Opsional untuk mengaktifkan AI chat dan fallback provider:
+   AI_CHAT_PROVIDER_ORDER=gemini,mistral
+   GEMINI_API_URL=https://generativelanguage.googleapis.com/v1beta/openai/chat/completions
+   GEMINI_API_KEY=server-only-gemini-key
+   GEMINI_MODEL=your-gemini-model
+   MISTRAL_API_KEY=server-only-mistral-key
+   MISTRAL_MODEL=your-mistral-model
+   MISTRAL_CONVERSATIONS_API_URL=https://api.mistral.ai/v1/conversations
+   # Opsional bila model chat berbeda dengan model web search:
+   # MISTRAL_WEB_SEARCH_MODEL=your-mistral-web-search-model
    ```
 
 5. Klik **Deploy**. Vercel akan menjalankan `npm run build` secara otomatis.

@@ -4,7 +4,9 @@ import Link from "next/link";
 import Image from "next/image";
 import { useRouter } from "next/navigation";
 import { useState, type FormEvent } from "react";
+import { Eye, EyeOff } from "lucide-react";
 import { createClient } from "@/lib/supabase/client";
+import { getPasswordValidationError, MIN_PASSWORD_LENGTH } from "@/lib/password-validation";
 
 interface ResetPasswordFormProps {
   initialError: string;
@@ -17,14 +19,17 @@ export function ResetPasswordForm({ initialError }: ResetPasswordFormProps) {
   const [isSaving, setIsSaving] = useState(false);
   const [error, setError] = useState(initialError);
   const [success, setSuccess] = useState("");
+  const [showPassword, setShowPassword] = useState(false);
+  const [showConfirmation, setShowConfirmation] = useState(false);
 
   const handleSubmit = async (event: FormEvent<HTMLFormElement>) => {
     event.preventDefault();
     setError("");
     setSuccess("");
 
-    if (password.length < 6) {
-      setError("Kata sandi minimal terdiri dari 6 karakter.");
+    const passwordError = getPasswordValidationError(password, "Kata sandi");
+    if (passwordError) {
+      setError(passwordError);
       return;
     }
     if (password !== confirmation) {
@@ -62,11 +67,22 @@ export function ResetPasswordForm({ initialError }: ResetPasswordFormProps) {
         <form onSubmit={handleSubmit} className="mt-6 space-y-5">
           <label className="block text-xs font-bold uppercase text-gray-500">
             Kata sandi baru
-            <input type="password" required minLength={6} autoComplete="new-password" value={password} onChange={(event) => setPassword(event.target.value)} className="auth-input mt-1.5" />
+            <div className="relative mt-1.5">
+              <input type={showPassword ? "text" : "password"} required minLength={MIN_PASSWORD_LENGTH} autoComplete="new-password" value={password} onChange={(event) => setPassword(event.target.value)} className="auth-input pr-11" />
+              <button type="button" onClick={() => setShowPassword((current) => !current)} className="absolute right-3.5 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-700" aria-label={showPassword ? "Sembunyikan kata sandi" : "Tampilkan kata sandi"} aria-pressed={showPassword}>
+                {showPassword ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
+              </button>
+            </div>
+            <span className="mt-1 block text-[11px] font-medium normal-case text-gray-400">Minimal 6 karakter, format bebas.</span>
           </label>
           <label className="block text-xs font-bold uppercase text-gray-500">
             Konfirmasi kata sandi
-            <input type="password" required minLength={6} autoComplete="new-password" value={confirmation} onChange={(event) => setConfirmation(event.target.value)} className="auth-input mt-1.5" />
+            <div className="relative mt-1.5">
+              <input type={showConfirmation ? "text" : "password"} required minLength={MIN_PASSWORD_LENGTH} autoComplete="new-password" value={confirmation} onChange={(event) => setConfirmation(event.target.value)} className="auth-input pr-11" />
+              <button type="button" onClick={() => setShowConfirmation((current) => !current)} className="absolute right-3.5 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-700" aria-label={showConfirmation ? "Sembunyikan konfirmasi kata sandi" : "Tampilkan konfirmasi kata sandi"} aria-pressed={showConfirmation}>
+                {showConfirmation ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
+              </button>
+            </div>
           </label>
           <button type="submit" disabled={isSaving} className="w-full rounded-xl bg-[#0F2C23] px-4 py-3.5 text-sm font-bold text-white shadow-md transition-colors hover:bg-[#184537] disabled:cursor-not-allowed disabled:opacity-70">
             {isSaving ? "Menyimpan..." : "Simpan kata sandi"}

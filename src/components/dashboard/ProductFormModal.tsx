@@ -163,9 +163,9 @@ export function ProductFormModal({
   };
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center overflow-y-auto bg-black/60 p-4 backdrop-blur-sm animate-in fade-in duration-200">
-      <div className="my-4 w-full max-w-2xl overflow-hidden rounded-3xl border border-gray-100 bg-white shadow-2xl">
-        <div className="flex items-center justify-between border-b border-gray-100 bg-gray-50/80 px-6 py-4">
+    <div className="fixed inset-0 z-50 flex items-start justify-center overflow-y-auto bg-black/60 p-3 backdrop-blur-sm animate-in fade-in duration-200 sm:items-center sm:p-4">
+      <div className="my-3 w-full max-w-2xl overflow-hidden rounded-2xl border border-gray-100 bg-white shadow-2xl sm:my-4 sm:rounded-3xl">
+        <div className="flex items-center justify-between gap-3 border-b border-gray-100 bg-gray-50/80 px-4 py-4 sm:px-6">
           <div>
             <h3 className="text-base font-extrabold text-gray-900 sm:text-lg">
               {product ? "Edit Data Produk" : "Tambah Produk Baru"}
@@ -177,7 +177,7 @@ export function ProductFormModal({
           </button>
         </div>
 
-        <form onSubmit={submit} className="space-y-4 p-6 text-xs sm:text-sm">
+        <form onSubmit={submit} className="space-y-4 p-4 text-xs sm:p-6 sm:text-sm">
           <Field label="Nama Produk *">
             <input required value={form.name} onChange={(event) => setForm({ ...form, name: event.target.value })} placeholder="Contoh: Kerajinan Kain Tenun Minasa Upa" className="w-full rounded-xl border border-gray-200 bg-white px-3.5 py-2.5 outline-none transition-all placeholder:text-gray-400 focus:border-[#0F2C23] focus:ring-2 focus:ring-[#0F2C23]/15" />
           </Field>
@@ -200,9 +200,9 @@ export function ProductFormModal({
                         <Image src={image.previewUrl} alt={`Foto ${index + 1}`} fill unoptimized className="object-cover" />
                       </div>
                       {image.isPrimary && <span className="absolute left-2 top-2 inline-flex items-center gap-1 rounded-full bg-[#963E1B] px-2 py-1 text-[10px] font-bold text-white"><Star className="h-3 w-3 fill-current" /> Utama</span>}
-                      <div className="absolute inset-x-2 bottom-2 flex items-center justify-between gap-1">
-                        <button type="button" onClick={() => setPrimary(index)} className="rounded-lg bg-white/90 px-2 py-1 text-[10px] font-bold text-gray-700 shadow-sm hover:bg-white">Jadikan utama</button>
-                        <div className="flex gap-1">
+                      <div className="absolute inset-x-2 bottom-2 flex flex-col items-stretch gap-1 sm:flex-row sm:items-center sm:justify-between">
+                        <button type="button" onClick={() => setPrimary(index)} className="w-full rounded-lg bg-white/90 px-2 py-1 text-[10px] font-bold text-gray-700 shadow-sm hover:bg-white sm:w-auto">Jadikan utama</button>
+                        <div className="flex justify-end gap-1">
                           <button type="button" onClick={() => moveImage(index, -1)} disabled={index === 0} aria-label="Geser foto ke kiri" className="rounded-lg bg-white/90 p-1.5 text-gray-700 shadow-sm disabled:opacity-40"><ArrowUp className="h-3.5 w-3.5 -rotate-90" /></button>
                           <button type="button" onClick={() => moveImage(index, 1)} disabled={index === form.images.length - 1} aria-label="Geser foto ke kanan" className="rounded-lg bg-white/90 p-1.5 text-gray-700 shadow-sm disabled:opacity-40"><ArrowDown className="h-3.5 w-3.5 -rotate-90" /></button>
                           <button type="button" onClick={() => removeImage(index)} aria-label={`Hapus foto ${index + 1}`} className="rounded-lg bg-white/90 p-1.5 text-rose-600 shadow-sm hover:bg-rose-50"><Trash2 className="h-3.5 w-3.5" /></button>
@@ -229,9 +229,9 @@ export function ProductFormModal({
             <label className="flex cursor-pointer items-center gap-2"><input type="checkbox" checked={form.isVisible} onChange={(event) => setForm({ ...form, isVisible: event.target.checked })} className="h-4 w-4 rounded border-gray-300 text-[#0F2C23] focus:ring-[#0F2C23]" /> Tampilkan di Katalog Publik</label>
           </div>
 
-          <div className="mt-6 flex items-center justify-end gap-3 border-t border-gray-100 pt-4">
-            <button type="button" onClick={onClose} className="rounded-xl border border-gray-200 px-4 py-2.5 text-xs font-semibold text-gray-600 hover:bg-gray-50 transition-colors sm:text-sm">Batal</button>
-            <button type="submit" disabled={isSaving} className="rounded-xl bg-[#0F2C23] px-5 py-2.5 text-xs font-bold text-white shadow-sm hover:bg-[#184537] transition-all disabled:opacity-60 sm:text-sm">{isSaving ? "Menyimpan..." : product ? "Simpan Perubahan" : "Simpan Produk"}</button>
+          <div className="mt-6 flex flex-col-reverse gap-2 border-t border-gray-100 pt-4 sm:flex-row sm:items-center sm:justify-end sm:gap-3">
+            <button type="button" onClick={onClose} className="w-full rounded-xl border border-gray-200 px-4 py-2.5 text-xs font-semibold text-gray-600 transition-colors hover:bg-gray-50 sm:w-auto sm:text-sm">Batal</button>
+            <button type="submit" disabled={isSaving} className="w-full rounded-xl bg-[#0F2C23] px-5 py-2.5 text-xs font-bold text-white shadow-sm transition-all hover:bg-[#184537] disabled:opacity-60 sm:w-auto sm:text-sm">{isSaving ? "Menyimpan..." : product ? "Simpan Perubahan" : "Simpan Produk"}</button>
           </div>
         </form>
       </div>

@@ -4,6 +4,8 @@ import { FormEvent, useCallback, useEffect, useMemo, useState } from "react";
 import {
   AlertCircle,
   CheckCircle2,
+  Eye,
+  EyeOff,
   KeyRound,
   Loader2,
   Lock,
@@ -15,6 +17,7 @@ import {
   X,
   XCircle,
 } from "lucide-react";
+import { getPasswordValidationError, MIN_PASSWORD_LENGTH } from "@/lib/password-validation";
 
 type Role = "toko" | "admin";
 
@@ -37,6 +40,7 @@ interface UserFormState {
   full_name: string;
   email: string;
   password: string;
+  password_confirmation: string;
   role: Role;
 }
 
@@ -44,6 +48,7 @@ const EMPTY_FORM: UserFormState = {
   full_name: "",
   email: "",
   password: "",
+  password_confirmation: "",
   role: "toko",
 };
 
@@ -67,6 +72,11 @@ export function AdminUserManagement() {
   const [pendingAction, setPendingAction] = useState<PendingAction>(null);
   const [errorMessage, setErrorMessage] = useState("");
   const [successMessage, setSuccessMessage] = useState("");
+  const [showCreatePassword, setShowCreatePassword] = useState(false);
+  const [showCreateConfirmation, setShowCreateConfirmation] = useState(false);
+  const [resetTarget, setResetTarget] = useState<AdminUser | null>(null);
+  const [resetPassword, setResetPassword] = useState("");
+  const [showResetPassword, setShowResetPassword] = useState(false);
 
   const loadUsers = useCallback(async () => {
     setIsLoading(true);
@@ -93,6 +103,18 @@ export function AdminUserManagement() {
 
   const createUser = async (event: FormEvent<HTMLFormElement>) => {
     event.preventDefault();
+    const passwordError = getPasswordValidationError(form.password);
+    if (passwordError) {
+      setErrorMessage(passwordError);
+      setSuccessMessage("");
+      return;
+    }
+    if (form.password !== form.password_confirmation) {
+      setErrorMessage("Konfirmasi password tidak cocok.");
+      setSuccessMessage("");
+      return;
+    }
+
     setIsCreating(true);
     setErrorMessage("");
     setSuccessMessage("");
@@ -100,7 +122,13 @@ export function AdminUserManagement() {
       const response = await fetch("/api/admin/users", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify(form),
+        body: JSON.stringify({
+          full_name: form.full_name,
+          email: form.email,
+          password: form.password,
+          password_confirmation: form.password_confirmation,
+          role: form.role,
+        }),
       });
       const payload = await response.json().catch(() => ({}));
       if (!response.ok) throw new Error(payload.error || "User gagal dibuat.");
@@ -130,8 +158,10 @@ export function AdminUserManagement() {
       if (!response.ok) throw new Error(payload.error || "Perubahan user gagal disimpan.");
       setSuccessMessage("Perubahan user berhasil disimpan.");
       await loadUsers();
+      return true;
     } catch (error) {
       setErrorMessage(error instanceof Error ? error.message : "Perubahan user gagal disimpan.");
+      return false;
     } finally {
       setPendingAction(null);
     }
@@ -150,13 +180,27 @@ export function AdminUserManagement() {
   };
 
   const handleResetPassword = (user: AdminUser) => {
-    const password = window.prompt(`Masukkan password baru untuk ${user.email} (minimal 6 karakter):`);
-    if (password === null) return;
-    if (password.length < 6) {
-      setErrorMessage("Password baru minimal 6 karakter.");
+    setResetTarget(user);
+    setResetPassword("");
+    setShowResetPassword(false);
+    setErrorMessage("");
+  };
+
+  const submitResetPassword = async (event: FormEvent<HTMLFormElement>) => {
+    event.preventDefault();
+    if (!resetTarget) return;
+
+    const passwordError = getPasswordValidationError(resetPassword);
+    if (passwordError) {
+      setErrorMessage(passwordError);
       return;
     }
-    void updateUser(user.id, "reset_password", { password });
+    const updated = await updateUser(resetTarget.id, "reset_password", { password: resetPassword });
+    if (updated) {
+      setResetTarget(null);
+      setResetPassword("");
+      setShowResetPassword(false);
+    }
   };
 
   return (
@@ -248,28 +292,54 @@ export function AdminUserManagement() {
               <div className="grid gap-4 sm:grid-cols-2">
                 <div>
                   <label className="block text-xs font-bold uppercase tracking-wider text-gray-700">Password <span className="text-red-500">*</span></label>
-                  <input
-                    type="password"
-                    required
-                    minLength={6}
-                    value={form.password}
-                    onChange={(event) => setForm((current) => ({ ...current, password: event.target.value }))}
-                    placeholder="Minimal 6 karakter"
-                    className="mt-1.5 w-full rounded-xl border border-gray-200 px-3.5 py-2.5 text-sm font-normal outline-none focus:border-[#0F2C23] focus:ring-1 focus:ring-[#0F2C23]"
-                  />
+                  <div className="relative mt-1.5">
+                    <input
+                      type={showCreatePassword ? "text" : "password"}
+                      required
+                      minLength={MIN_PASSWORD_LENGTH}
+                      autoComplete="new-password"
+                      value={form.password}
+                      onChange={(event) => setForm((current) => ({ ...current, password: event.target.value }))}
+                      placeholder="Minimal 6 karakter, format bebas"
+                      className="w-full rounded-xl border border-gray-200 px-3.5 py-2.5 pr-11 text-sm font-normal outline-none focus:border-[#0F2C23] focus:ring-1 focus:ring-[#0F2C23]"
+                    />
+                    <button type="button" onClick={() => setShowCreatePassword((current) => !current)} className="absolute right-3.5 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-700" aria-label={showCreatePassword ? "Sembunyikan password" : "Tampilkan password"} aria-pressed={showCreatePassword}>
+                      {showCreatePassword ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
+                    </button>
+                  </div>
+                  <p className="mt-1 text-[11px] text-gray-400">Boleh menggunakan huruf, angka, simbol, atau spasi.</p>
                 </div>
 
                 <div>
-                  <label className="block text-xs font-bold uppercase tracking-wider text-gray-700">Role Pengguna</label>
-                  <select
-                    value={form.role}
-                    onChange={(event) => setForm((current) => ({ ...current, role: event.target.value as Role }))}
-                    className="mt-1.5 w-full rounded-xl border border-gray-200 bg-white px-3.5 py-2.5 text-sm font-semibold text-gray-700 outline-none focus:border-[#0F2C23] focus:ring-1 focus:ring-[#0F2C23]"
-                  >
-                    <option value="toko">Toko</option>
-                    <option value="admin">Admin</option>
-                  </select>
+                  <label className="block text-xs font-bold uppercase tracking-wider text-gray-700">Konfirmasi Password <span className="text-red-500">*</span></label>
+                  <div className="relative mt-1.5">
+                    <input
+                      type={showCreateConfirmation ? "text" : "password"}
+                      required
+                      minLength={MIN_PASSWORD_LENGTH}
+                      autoComplete="new-password"
+                      value={form.password_confirmation}
+                      onChange={(event) => setForm((current) => ({ ...current, password_confirmation: event.target.value }))}
+                      placeholder="Ulangi password"
+                      className="w-full rounded-xl border border-gray-200 px-3.5 py-2.5 pr-11 text-sm font-normal outline-none focus:border-[#0F2C23] focus:ring-1 focus:ring-[#0F2C23]"
+                    />
+                    <button type="button" onClick={() => setShowCreateConfirmation((current) => !current)} className="absolute right-3.5 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-700" aria-label={showCreateConfirmation ? "Sembunyikan konfirmasi password" : "Tampilkan konfirmasi password"} aria-pressed={showCreateConfirmation}>
+                      {showCreateConfirmation ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
+                    </button>
+                  </div>
                 </div>
+              </div>
+
+              <div>
+                <label className="block text-xs font-bold uppercase tracking-wider text-gray-700">Role Pengguna</label>
+                <select
+                  value={form.role}
+                  onChange={(event) => setForm((current) => ({ ...current, role: event.target.value as Role }))}
+                  className="mt-1.5 w-full rounded-xl border border-gray-200 bg-white px-3.5 py-2.5 text-sm font-semibold text-gray-700 outline-none focus:border-[#0F2C23] focus:ring-1 focus:ring-[#0F2C23]"
+                >
+                  <option value="toko">Toko</option>
+                  <option value="admin">Admin</option>
+                </select>
               </div>
 
               <div className="mt-6 flex items-center justify-end gap-3 border-t border-gray-100 pt-4">
@@ -286,6 +356,55 @@ export function AdminUserManagement() {
                   className="inline-flex items-center gap-2 rounded-xl bg-[#0F2C23] px-5 py-2.5 text-sm font-bold text-white hover:bg-[#184537] disabled:opacity-60 transition shadow-sm"
                 >
                   <UserPlus className="h-4 w-4" /> {isCreating ? "Membuat..." : "Buat User Baru"}
+                </button>
+              </div>
+            </form>
+          </div>
+        </div>
+      )}
+
+      {resetTarget && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4 backdrop-blur-xs" role="dialog" aria-modal="true" aria-labelledby="reset-password-title">
+          <div className="fixed inset-0" onClick={() => setResetTarget(null)} aria-hidden="true" />
+          <div className="relative w-full max-w-md rounded-2xl border border-gray-100 bg-white p-6 shadow-2xl">
+            <div className="flex items-center justify-between border-b border-gray-100 pb-4">
+              <div className="flex items-center gap-2.5">
+                <div className="flex h-9 w-9 items-center justify-center rounded-xl bg-[#0F2C23]/10 text-[#0F2C23]"><KeyRound className="h-5 w-5" /></div>
+                <div>
+                  <h3 id="reset-password-title" className="text-lg font-extrabold text-gray-900">Reset Password</h3>
+                  <p className="text-xs text-gray-500">Untuk {resetTarget.email}</p>
+                </div>
+              </div>
+              <button type="button" onClick={() => setResetTarget(null)} className="rounded-xl p-2 text-gray-400 transition hover:bg-gray-100 hover:text-gray-600" aria-label="Tutup modal reset password">
+                <X className="h-5 w-5" />
+              </button>
+            </div>
+
+            <form onSubmit={submitResetPassword} className="mt-5 space-y-4">
+              <div>
+                <label className="block text-xs font-bold uppercase tracking-wider text-gray-700">Password baru <span className="text-red-500">*</span></label>
+                <div className="relative mt-1.5">
+                  <input
+                    type={showResetPassword ? "text" : "password"}
+                    required
+                    minLength={MIN_PASSWORD_LENGTH}
+                    autoComplete="new-password"
+                    value={resetPassword}
+                    onChange={(event) => setResetPassword(event.target.value)}
+                    placeholder="Minimal 6 karakter, format bebas"
+                    className="w-full rounded-xl border border-gray-200 px-3.5 py-2.5 pr-11 text-sm outline-none focus:border-[#0F2C23] focus:ring-1 focus:ring-[#0F2C23]"
+                  />
+                  <button type="button" onClick={() => setShowResetPassword((current) => !current)} className="absolute right-3.5 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-700" aria-label={showResetPassword ? "Sembunyikan password baru" : "Tampilkan password baru"} aria-pressed={showResetPassword}>
+                    {showResetPassword ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
+                  </button>
+                </div>
+                <p className="mt-1 text-[11px] text-gray-400">Minimal 6 karakter, format bebas.</p>
+              </div>
+
+              <div className="flex items-center justify-end gap-3 border-t border-gray-100 pt-4">
+                <button type="button" onClick={() => setResetTarget(null)} className="rounded-xl border border-gray-200 bg-white px-4 py-2.5 text-sm font-bold text-gray-700 hover:bg-gray-50" disabled={pendingAction === `${resetTarget.id}:reset_password`}>Batal</button>
+                <button type="submit" disabled={pendingAction === `${resetTarget.id}:reset_password`} className="inline-flex items-center gap-2 rounded-xl bg-[#0F2C23] px-5 py-2.5 text-sm font-bold text-white hover:bg-[#184537] disabled:opacity-60">
+                  <KeyRound className="h-4 w-4" /> {pendingAction === `${resetTarget.id}:reset_password` ? "Menyimpan..." : "Simpan Password"}
                 </button>
               </div>
             </form>

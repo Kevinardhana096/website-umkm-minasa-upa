@@ -72,7 +72,7 @@ export function LoginForm({
             onChange={(event) => onChange({ ...values, password: event.target.value })}
             className="w-full rounded-xl border border-gray-200 py-3 pl-10 pr-11 text-sm transition-all focus:border-[#0F2C23] focus:outline-none"
           />
-          <button type="button" onClick={() => setShowPassword((current) => !current)} className="absolute right-3.5 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-700" aria-label="Tampilkan kata sandi">
+          <button type="button" onClick={() => setShowPassword((current) => !current)} className="absolute right-3.5 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-700" aria-label={showPassword ? "Sembunyikan kata sandi" : "Tampilkan kata sandi"} aria-pressed={showPassword}>
             {showPassword ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
           </button>
         </div>
