@@ -8,9 +8,12 @@ import { ChevronLeft, ChevronRight, PackageX } from 'lucide-react';
 interface ProductGridProps {
   products: Product[];
   onDetailClick: (product: Product) => void;
+  canManageProduct?: (product: Product) => boolean;
+  onEditProduct?: (product: Product) => void;
+  onDeleteProduct?: (product: Product) => void;
 }
 
-export const ProductGrid: React.FC<ProductGridProps> = ({ products, onDetailClick }) => {
+export const ProductGrid: React.FC<ProductGridProps> = ({ products, onDetailClick, canManageProduct, onEditProduct, onDeleteProduct }) => {
   const [currentPage, setCurrentPage] = useState(1);
   const itemsPerPage = 8;
 
@@ -49,6 +52,9 @@ export const ProductGrid: React.FC<ProductGridProps> = ({ products, onDetailClic
             key={product.id}
             product={product}
             onDetailClick={onDetailClick}
+            canManage={canManageProduct?.(product) ?? false}
+            onEdit={onEditProduct}
+            onDelete={onDeleteProduct}
           />
         ))}
       </div>

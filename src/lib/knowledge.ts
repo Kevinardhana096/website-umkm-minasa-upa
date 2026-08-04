@@ -5,23 +5,21 @@ export interface PublicKnowledgeReply {
 
 export type PublicKnowledgeIntent = "village" | "group" | "business";
 
-const KNOWLEDGE_SOURCE_NOTE = "Menurut ringkasan profil proposal program yang digunakan sebagai sumber knowledge proyek";
-
 const VILLAGE_PROFILE = [
   "Desa Minasa Upa berada di Kecamatan Bontoa, Kabupaten Maros, Provinsi Sulawesi Selatan.",
-  "Dokumen sumber menyebut desa ini memiliki potensi ekonomi lokal pada industri rumah tangga, kerajinan, dan kegiatan UMKM yang banyak melibatkan kelompok perempuan.",
-  "Dokumen tersebut juga mencatat luas wilayah sekitar 8,5 km², sekitar 3.200 penduduk, dan 4 dusun. Angka ini merupakan snapshot dari dokumen proposal dan perlu dikonfirmasi jika digunakan untuk keputusan resmi.",
+  "Desa ini memiliki potensi ekonomi lokal pada industri rumah tangga, kerajinan, dan kegiatan UMKM yang banyak melibatkan kelompok perempuan.",
+  "Wilayah desa memiliki luas sekitar 8,5 km², sekitar 3.200 penduduk, dan 4 dusun. Angka tersebut dapat berubah dan perlu dikonfirmasi jika digunakan untuk keputusan resmi.",
 ].join(" ");
 
 const GROUP_PROFILE = [
-  "Kelompok UMKM Wanita Tangguh Minasa Upa adalah kelompok usaha bersama yang menurut dokumen sumber berdiri sejak 2020 dan terdiri dari 13 perempuan usia produktif.",
-  "Produk yang disebut dalam dokumen meliputi kue coklat balok, kue kering, onde-onde, sambal kemasan berbagai varian, dan keripik pisang.",
+  "Kelompok UMKM Wanita Tangguh Minasa Upa adalah kelompok usaha bersama yang berdiri sejak 2020 dan terdiri dari 13 perempuan usia produktif.",
+  "Produk kelompok meliputi kue coklat balok, kue kering, onde-onde, sambal kemasan berbagai varian, dan keripik pisang.",
   "Produksi dilakukan secara rumahan oleh anggota kelompok dengan bahan baku yang diperoleh dari pasar lokal Maros dan petani setempat.",
 ].join(" ");
 
 const BUSINESS_CONTEXT = [
-  "Profil proposal menggambarkan pemasaran kelompok masih berfokus pada pasar tradisional, warung lokal, pesanan kenalan, Facebook, dan WhatsApp pribadi.",
-  "Kondisi yang dicatat meliputi identitas merek dan kemasan yang belum konsisten, pembuatan konten promosi yang masih terbatas, serta pembukuan dan pengelolaan stok yang belum terdigitalisasi secara terstruktur.",
+  "Pemasaran kelompok masih berfokus pada pasar tradisional, warung lokal, pesanan kenalan, Facebook, dan WhatsApp pribadi.",
+  "Tantangan usaha meliputi identitas merek dan kemasan yang belum konsisten, pembuatan konten promosi yang masih terbatas, serta pembukuan dan pengelolaan stok yang belum terdigitalisasi secara terstruktur.",
 ].join(" ");
 
 function hasLatestIntent(message: string) {
@@ -60,7 +58,7 @@ export function buildPublicKnowledgeReply(
   if (business) sections.push(`Kondisi usaha: ${BUSINESS_CONTEXT}`);
 
   return {
-    reply: `${KNOWLEDGE_SOURCE_NOTE}. ${sections.join(" ")}`,
+    reply: sections.join(" "),
     source: "knowledge",
   };
 }
@@ -68,11 +66,10 @@ export function buildPublicKnowledgeReply(
 export function getPublicKnowledgeContext() {
   return [
     "<public_project_knowledge>",
-    `${KNOWLEDGE_SOURCE_NOTE}:`,
     `- Desa: ${VILLAGE_PROFILE}`,
     `- Kelompok: ${GROUP_PROFILE}`,
     `- Kondisi usaha: ${BUSINESS_CONTEXT}`,
-    "Gunakan ini hanya sebagai profil statis proyek. Jangan menganggap angka profil sebagai data real-time, target proposal sebagai hasil yang sudah tercapai, atau mengarang harga, stok, legalitas, dan kontak.",
+    "Gunakan ini sebagai profil statis proyek. Angka dan kondisi dapat berubah; jangan menganggapnya sebagai data real-time atau mengarang harga, stok, legalitas, dan kontak.",
     "</public_project_knowledge>",
   ].join("\n");
 }

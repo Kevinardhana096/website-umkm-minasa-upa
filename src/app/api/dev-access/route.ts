@@ -25,7 +25,7 @@ export async function POST() {
     .from("profiles")
     .select("role")
     .eq("id", authData.user.id)
-    .maybeSingle<{ role: "toko" | "admin" }>();
+    .maybeSingle<{ role: "toko" | "admin" | "anggota" }>();
   if (profileError || !profile) {
     return NextResponse.json({ error: "Profile akun Dev Access belum tersedia." }, { status: 503 });
   }

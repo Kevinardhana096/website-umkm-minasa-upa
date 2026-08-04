@@ -1,6 +1,7 @@
 import type { User } from "@supabase/supabase-js";
 import { createClient } from "@/lib/supabase/client";
 import { MAX_PRODUCT_IMAGES, normalizeProductRows, PRODUCT_SELECT, type ProductQueryRow, type ProductRow, type StoreRow } from "@/lib/products";
+import { validateWhatsappNumber } from "@/lib/whatsapp";
 
 const IMAGE_TYPES = new Set(["image/jpeg", "image/png", "image/webp"]);
 const MAX_IMAGE_SIZE = 5 * 1024 * 1024;
@@ -14,9 +15,11 @@ export interface ProductImageInput {
 
 export interface NewProductInput {
   id?: string;
+  storeName?: string;
   name: string;
   description: string;
   price: number | null;
+  whatsappNumber: string;
   images?: ProductImageInput[];
   // Kept temporarily for callers outside the current form.
   imagePath?: string;
@@ -39,6 +42,17 @@ export interface StoreProfileInput {
   isActive: boolean;
 }
 
+export async function revalidatePublicCatalog() {
+  try {
+    const response = await fetch("/api/catalog/revalidate", { method: "POST" });
+    if (!response.ok) {
+      console.warn("Katalog publik belum berhasil di-refresh setelah perubahan.");
+    }
+  } catch (error) {
+    console.warn("Katalog publik belum berhasil di-refresh setelah perubahan.", error);
+  }
+}
+
 export function isStoreProfileComplete(store: StoreRow | null | undefined): store is StoreRow {
   if (!store) return false;
 
@@ -58,7 +72,7 @@ export async function getCurrentStoreData(): Promise<StoreData> {
     .from("profiles")
     .select("role")
     .eq("id", user.id)
-    .maybeSingle<{ role: "toko" | "admin" }>();
+    .maybeSingle<{ role: "toko" | "admin" | "anggota" }>();
 
   if (profileError) throw profileError;
   if (!profile || profile.role !== "toko") {
@@ -92,7 +106,7 @@ function normalizeStoreProfileInput(input: StoreProfileInput) {
   const name = input.name.trim();
   const sellerName = input.sellerName.trim();
   const description = input.description.trim();
-  const whatsappNumber = input.whatsappNumber.replace(/\D/g, "");
+  const whatsappNumber = validateWhatsappNumber(input.whatsappNumber);
 
   if (name.length < 2) throw new Error("Nama toko minimal 2 karakter.");
   if (sellerName.length < 2) throw new Error("Nama penjual minimal 2 karakter.");
@@ -272,6 +286,7 @@ export async function saveProduct(storeId: string, input: NewProductInput) {
   const description = input.description.trim();
   if (!name) throw new Error("Nama produk wajib diisi.");
   if (!description) throw new Error("Deskripsi produk wajib diisi.");
+  const whatsappNumber = validateWhatsappNumber(input.whatsappNumber);
 
   const existingProduct = input.id ? await getProductForStore(input.id, storeId) : undefined;
   const { resolved, uploadedPaths } = await resolveProductImages(userData.user.id, getImageDrafts(input), existingProduct);
@@ -280,6 +295,7 @@ export async function saveProduct(storeId: string, input: NewProductInput) {
     p_store_id: storeId,
     p_name: name,
     p_description: description,
+    p_whatsapp_number: whatsappNumber,
     p_price: input.price,
     p_is_available: input.isAvailable,
     p_is_visible: input.isVisible,

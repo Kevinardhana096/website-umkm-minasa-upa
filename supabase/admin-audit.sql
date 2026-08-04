@@ -3,13 +3,23 @@
 
 create table if not exists public.admin_audit_logs (
   id uuid primary key default gen_random_uuid(),
-  admin_id uuid not null references auth.users(id) on delete restrict,
+  admin_id uuid references auth.users(id) on delete set null,
   action text not null check (action in ('create', 'update', 'delete', 'role', 'ban', 'unban', 'reset_password')),
   resource text not null check (resource in ('store', 'product', 'user')),
   resource_id uuid,
   details jsonb not null default '{}'::jsonb,
   created_at timestamptz not null default now()
 );
+
+-- Akun admin yang dihapus tidak boleh memblokir penghapusan karena riwayat audit.
+-- Jejaknya tetap dipertahankan, tetapi admin_id menjadi NULL.
+alter table public.admin_audit_logs
+  drop constraint if exists admin_audit_logs_admin_id_fkey;
+alter table public.admin_audit_logs
+  alter column admin_id drop not null;
+alter table public.admin_audit_logs
+  add constraint admin_audit_logs_admin_id_fkey
+  foreign key (admin_id) references auth.users(id) on delete set null;
 
 -- Perbarui constraint pada project yang sudah menjalankan versi awal migration ini.
 alter table public.admin_audit_logs

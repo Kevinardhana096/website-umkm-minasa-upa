@@ -101,6 +101,7 @@ export function AdminDashboardClient({ initialData }: AdminDashboardClientProps)
       formData.append("id", editingProduct.id);
       formData.append("name", input.name);
       formData.append("description", input.description);
+      formData.append("whatsapp_number", input.whatsappNumber);
       formData.append("price", input.price === null ? "" : String(input.price));
       formData.append("is_available", String(input.isAvailable));
       formData.append("is_visible", String(input.isVisible));

@@ -1,11 +1,22 @@
 import { createClient } from "@supabase/supabase-js";
-import { unstable_cache } from "next/cache";
-import { mapProductRow, normalizeProductRows, PRODUCT_SELECT, type CatalogStore, type ProductQueryRow, type StoreRow } from "@/lib/products";
+import { revalidatePath, revalidateTag, unstable_cache } from "next/cache";
+import { mapProductRow, normalizeProductRows, PRODUCT_SELECT, type CatalogStore, type CatalogStoreOption, type ProductQueryRow, type StoreRow } from "@/lib/products";
 import type { Product } from "@/types/product";
 
 export interface PublicCatalogData {
   products: Product[];
   store: CatalogStore | null;
+  stores: CatalogStoreOption[];
+  status: "available" | "unavailable";
+}
+
+export const PUBLIC_CATALOG_CACHE_TAG = "public-catalog";
+
+export function revalidatePublicCatalogCache() {
+  revalidateTag(PUBLIC_CATALOG_CACHE_TAG, { expire: 0 });
+  revalidatePath("/", "page");
+  revalidatePath("/katalog", "page");
+  revalidatePath("/profil", "page");
 }
 
 async function fetchPublicCatalog(): Promise<PublicCatalogData | null> {
@@ -26,7 +37,7 @@ async function fetchPublicCatalog(): Promise<PublicCatalogData | null> {
       .returns<StoreRow[]>();
 
     if (storeError) throw storeError;
-    if (!stores || stores.length === 0) return { products: [], store: null };
+    if (!stores || stores.length === 0) return { products: [], store: null, stores: [], status: "available" };
 
     const { data: rows, error: productError } = await supabase
       .from("products")
@@ -43,7 +54,7 @@ async function fetchPublicCatalog(): Promise<PublicCatalogData | null> {
     return {
       products: normalizeProductRows(rows).flatMap((row) => {
         const store = storesById.get(row.store_id);
-        return store ? [mapProductRow(row, store, supabaseUrl)] : [];
+        return store ? [mapProductRow(row, store, supabaseUrl, { includeOwnership: false })] : [];
       }),
       store: stores.length === 1
         ? {
@@ -53,14 +64,22 @@ async function fetchPublicCatalog(): Promise<PublicCatalogData | null> {
             whatsappNumber: stores[0].whatsapp_number,
           }
         : null,
+      stores: stores.map((store) => ({
+        id: store.id,
+        name: store.name,
+        sellerName: store.seller_name,
+        whatsappNumber: store.whatsapp_number,
+      })),
+      status: "available",
     };
   } catch (error) {
     console.error("Gagal memuat katalog Supabase", error);
     // A configured backend error must not silently show demo data.
-    return { products: [], store: null };
+    return { products: [], store: null, stores: [], status: "unavailable" };
   }
 }
 
-export const getPublicCatalog = unstable_cache(fetchPublicCatalog, ["public-catalog"], {
+export const getPublicCatalog = unstable_cache(fetchPublicCatalog, [PUBLIC_CATALOG_CACHE_TAG], {
   revalidate: 60,
+  tags: [PUBLIC_CATALOG_CACHE_TAG],
 });

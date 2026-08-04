@@ -2,8 +2,10 @@ export const CHAT_INTENT_ROUTES = [
   "knowledge_village",
   "knowledge_group",
   "knowledge_business",
+  "website_help",
   "web",
   "catalog_ai",
+  "off_topic",
 ] as const;
 
 export type ChatIntentRoute = (typeof CHAT_INTENT_ROUTES)[number];
@@ -22,6 +24,10 @@ const ROUTE_ALIASES: Record<string, ChatIntentRoute> = {
   knowledge_group: "knowledge_group",
   business: "knowledge_business",
   knowledge_business: "knowledge_business",
+  website: "website_help",
+  site: "website_help",
+  website_help: "website_help",
+  help: "website_help",
   web_search: "web",
   web: "web",
   latest: "web",
@@ -29,6 +35,10 @@ const ROUTE_ALIASES: Record<string, ChatIntentRoute> = {
   catalog: "catalog_ai",
   catalog_ai: "catalog_ai",
   ai_catalog: "catalog_ai",
+  off_topic: "off_topic",
+  unsupported: "off_topic",
+  out_of_scope: "off_topic",
+  scope: "off_topic",
 };
 
 function getJsonObject(value: string) {

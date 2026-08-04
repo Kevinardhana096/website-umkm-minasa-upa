@@ -1,12 +1,11 @@
 'use client';
 
-import React, { forwardRef, useImperativeHandle, useState } from 'react';
+import React, { forwardRef, useImperativeHandle, useRef, useState } from 'react';
 import { Bot, MessageSquareText, Send, X } from 'lucide-react';
 import {
   buildFallbackChatReply,
   type ChatProductContext,
   type ChatReply,
-  type ChatSource,
   type ChatStoreContext,
 } from '@/lib/chat';
 import type { CatalogStore } from '@/lib/products';
@@ -16,7 +15,6 @@ interface ChatMessage {
   sender: 'bot' | 'user';
   text: string;
   whatsappUrl?: string;
-  sources?: ChatSource[];
 }
 
 interface ChatApiResponse extends ChatReply {
@@ -62,6 +60,8 @@ export const FloatingChatWidget = forwardRef<FloatingChatWidgetRef, FloatingChat
   const [isOpen, setIsOpen] = useState(false);
   const [contextProduct, setContextProduct] = useState<Product | null>(null);
   const [isReplying, setIsReplying] = useState(false);
+  const requestIdRef = useRef(0);
+  const requestControllerRef = useRef<AbortController | null>(null);
   const [messages, setMessages] = useState<ChatMessage[]>([
     {
       sender: 'bot',
@@ -70,20 +70,25 @@ export const FloatingChatWidget = forwardRef<FloatingChatWidgetRef, FloatingChat
   ]);
   const [inputText, setInputText] = useState('');
 
-  const appendBotReply = (payload: Pick<ChatReply, 'reply' | 'whatsappNumber' | 'whatsappMessage' | 'sources'>, product?: Product | null) => {
-    const whatsappNumber = payload.whatsappNumber?.trim() || product?.whatsappNumber?.trim() || store?.whatsappNumber?.trim();
+  const appendBotReply = (payload: Pick<ChatReply, 'reply' | 'whatsappNumber' | 'whatsappMessage'>) => {
+    // The API decides whether a reply is actionable. Do not infer a seller CTA
+    // merely because the conversation still has a product context; knowledge
+    // and off-topic replies should not look like purchase recommendations.
+    const whatsappNumber = payload.whatsappNumber?.trim();
     const whatsappMessage = payload.whatsappMessage
-      || (product
-        ? `Halo, saya ingin bertanya tentang produk ${product.name}.`
-        : `Halo ${store?.name ?? 'penjual'}, saya ingin bertanya tentang produk Anda.`);
+      || `Halo ${store?.name ?? 'penjual'}, saya ingin bertanya tentang produk Anda.`;
     const whatsappUrl = whatsappNumber ? getWhatsAppUrl(whatsappNumber, whatsappMessage) : undefined;
 
-    setMessages((previous) => [...previous, { sender: 'bot', text: payload.reply, whatsappUrl, sources: payload.sources }]);
+    setMessages((previous) => [...previous, { sender: 'bot', text: payload.reply, whatsappUrl }]);
   };
 
   const requestBotReply = async (userMessage: string, product = contextProduct) => {
     const productContext = product ? toChatProduct(product) : undefined;
     const storeContext = toChatStore(store);
+    const requestId = ++requestIdRef.current;
+    requestControllerRef.current?.abort();
+    const controller = new AbortController();
+    requestControllerRef.current = controller;
     setMessages((previous) => [...previous, { sender: 'user', text: userMessage }]);
     setIsReplying(true);
 
@@ -96,23 +101,35 @@ export const FloatingChatWidget = forwardRef<FloatingChatWidgetRef, FloatingChat
           product_id: product?.id,
           product: productContext,
           store: storeContext,
+          history: messages.slice(-8),
         }),
+        signal: controller.signal,
       });
       const payload = await response.json().catch(() => ({})) as Partial<ChatApiResponse>;
-      if (!response.ok || typeof payload.reply !== 'string') {
-        throw new Error(payload.error || 'Asisten chat belum dapat menjawab.');
+      if (!response.ok) {
+        if (requestId === requestIdRef.current) {
+          appendBotReply({ reply: typeof payload.error === 'string' ? payload.error : 'Asisten chat belum dapat menjawab saat ini.' });
+        }
+        return;
       }
+      if (typeof payload.reply !== 'string') {
+        throw new Error('Format jawaban asisten tidak valid.');
+      }
+      if (requestId !== requestIdRef.current) return;
       appendBotReply({
         reply: payload.reply,
         whatsappNumber: payload.whatsappNumber,
         whatsappMessage: payload.whatsappMessage,
-        sources: payload.sources,
-      }, product);
-    } catch {
+      });
+    } catch (error) {
+      if (requestId !== requestIdRef.current || (error instanceof DOMException && error.name === 'AbortError')) return;
       const fallback = buildFallbackChatReply(userMessage, productContext, storeContext);
-      appendBotReply(fallback, product);
+      appendBotReply(fallback);
     } finally {
-      setIsReplying(false);
+      if (requestId === requestIdRef.current) {
+        requestControllerRef.current = null;
+        setIsReplying(false);
+      }
     }
   };
 
@@ -151,18 +168,6 @@ export const FloatingChatWidget = forwardRef<FloatingChatWidgetRef, FloatingChat
               <div key={`${message.sender}-${index}`} className={`flex ${message.sender === 'user' ? 'justify-end' : 'justify-start'}`}>
                 <div className={`max-w-[85%] sm:max-w-[82%] rounded-2xl px-3.5 py-2.5 text-xs leading-relaxed ${message.sender === 'user' ? 'rounded-br-none bg-[#0F2C23] text-white' : 'rounded-bl-none border border-gray-200 bg-white text-gray-800 shadow-sm'}`}>
                   <p>{message.text}</p>
-                  {message.sources && message.sources.length > 0 && (
-                    <div className="mt-2 border-t border-gray-100 pt-2 text-[10px]">
-                      <p className="mb-1 font-semibold text-gray-500">Sumber web:</p>
-                      <div className="space-y-1">
-                        {message.sources.map((source) => (
-                          <a key={source.url} href={source.url} target="_blank" rel="noreferrer" title={source.url} className="block truncate text-[#963E1B] underline hover:text-[#803214]">
-                            {source.title}
-                          </a>
-                        ))}
-                      </div>
-                    </div>
-                  )}
                   {message.whatsappUrl && <a href={message.whatsappUrl} target="_blank" rel="noreferrer" className="mt-2 inline-flex rounded-lg bg-[#25D366] px-2.5 py-1.5 text-[11px] font-bold text-white hover:bg-[#1ebe5d]">Chat penjual di WhatsApp</a>}
                 </div>
               </div>

@@ -1,13 +1,18 @@
 import Image from "next/image";
 import { ArrowDown, ArrowUp, ImagePlus, Star, Trash2, X } from "lucide-react";
 import { useState, type FormEvent, type ReactNode } from "react";
-import { MAX_PRODUCT_IMAGES, toPublicImageUrl, type ProductRow } from "@/lib/products";
+import { MAX_PRODUCT_IMAGES, toPublicImageUrl, type CatalogStoreOption, type ProductRow } from "@/lib/products";
 import type { NewProductInput, ProductImageInput } from "@/lib/store-service";
 
 interface ProductFormModalProps {
   isOpen: boolean;
   isSaving: boolean;
   product?: ProductRow | null;
+  showStoreName?: boolean;
+  storeNameLocked?: boolean;
+  defaultStoreName?: string;
+  storeOptions?: CatalogStoreOption[];
+  defaultWhatsappNumber?: string;
   onClose: () => void;
   onSave: (input: NewProductInput) => Promise<void>;
 }
@@ -17,9 +22,11 @@ interface FormImage extends ProductImageInput {
 }
 
 interface FormState {
+  storeName: string;
   name: string;
   description: string;
   price: string;
+  whatsappNumber: string;
   images: FormImage[];
   imageUrlInput: string;
   isAvailable: boolean;
@@ -30,7 +37,7 @@ function previewForPath(imagePath: string) {
   return toPublicImageUrl(imagePath, process.env.NEXT_PUBLIC_SUPABASE_URL) ?? imagePath;
 }
 
-function formFromProduct(product?: ProductRow | null): FormState {
+function formFromProduct(product?: ProductRow | null, defaultStoreName = "", defaultWhatsappNumber = ""): FormState {
   const productImages = product?.product_images?.length
     ? product.product_images
     : product?.image_path
@@ -47,9 +54,11 @@ function formFromProduct(product?: ProductRow | null): FormState {
   if (images.length > 0 && !images.some((image) => image.isPrimary)) images[0].isPrimary = true;
 
   return {
+    storeName: product?.store_name ?? defaultStoreName,
     name: product?.name ?? "",
     description: product?.description ?? "",
     price: product?.price === null || product?.price === undefined ? "" : String(product.price),
+    whatsappNumber: product?.whatsapp_number ?? defaultWhatsappNumber,
     images,
     imageUrlInput: "",
     isAvailable: product?.is_available ?? true,
@@ -61,10 +70,15 @@ export function ProductFormModal({
   isOpen,
   isSaving,
   product,
+  showStoreName = false,
+  storeNameLocked = false,
+  defaultStoreName = "",
+  storeOptions = [],
+  defaultWhatsappNumber = "",
   onClose,
   onSave,
 }: ProductFormModalProps) {
-  const [form, setForm] = useState(() => formFromProduct(product));
+  const [form, setForm] = useState(() => formFromProduct(product, defaultStoreName, defaultWhatsappNumber));
   const [imageError, setImageError] = useState("");
   if (!isOpen) return null;
 
@@ -147,9 +161,11 @@ export function ProductFormModal({
     event.preventDefault();
     await onSave({
       id: product?.id,
+      storeName: form.storeName.trim() || undefined,
       name: form.name.trim(),
       description: form.description.trim(),
       price: form.price ? Number(form.price) : null,
+      whatsappNumber: form.whatsappNumber.trim(),
       images: form.images.map((image) => ({
         id: image.id,
         imagePath: image.imagePath,
@@ -159,7 +175,7 @@ export function ProductFormModal({
       isAvailable: form.isAvailable,
       isVisible: form.isVisible,
     });
-    setForm(formFromProduct(product));
+    setForm(formFromProduct(product, defaultStoreName, defaultWhatsappNumber));
   };
 
   return (
@@ -178,6 +194,24 @@ export function ProductFormModal({
         </div>
 
         <form onSubmit={submit} className="space-y-4 p-4 text-xs sm:p-6 sm:text-sm">
+          {showStoreName && (
+            <Field label="Nama Toko *">
+              <input
+                required
+                list="member-store-options"
+                value={form.storeName}
+                readOnly={storeNameLocked}
+                onChange={(event) => setForm({ ...form, storeName: event.target.value })}
+                placeholder="Ketik nama toko atau pilih saran..."
+                className="w-full rounded-xl border border-gray-200 bg-white px-3.5 py-2.5 outline-none transition-all placeholder:text-gray-400 focus:border-[#0F2C23] focus:ring-2 focus:ring-[#0F2C23]/15 read-only:bg-gray-50 read-only:text-gray-500"
+              />
+              <datalist id="member-store-options">
+                {storeOptions.map((store) => <option key={store.id} value={store.name} />)}
+              </datalist>
+              <p className="mt-1 text-[11px] text-gray-400">Nama toko yang sama dengan format huruf atau spasi berbeda akan dicocokkan otomatis.</p>
+            </Field>
+          )}
+
           <Field label="Nama Produk *">
             <input required value={form.name} onChange={(event) => setForm({ ...form, name: event.target.value })} placeholder="Contoh: Kerajinan Kain Tenun Minasa Upa" className="w-full rounded-xl border border-gray-200 bg-white px-3.5 py-2.5 outline-none transition-all placeholder:text-gray-400 focus:border-[#0F2C23] focus:ring-2 focus:ring-[#0F2C23]/15" />
           </Field>
@@ -188,6 +222,11 @@ export function ProductFormModal({
 
           <Field label="Harga (Rp, opsional)">
             <input type="number" min="0" value={form.price} onChange={(event) => setForm({ ...form, price: event.target.value })} placeholder="150000" className="w-full rounded-xl border border-gray-200 bg-white px-3.5 py-2.5 outline-none transition-all placeholder:text-gray-400 focus:border-[#0F2C23] focus:ring-2 focus:ring-[#0F2C23]/15" />
+          </Field>
+
+          <Field label="Nomor WhatsApp Produk *">
+            <input required minLength={8} inputMode="tel" value={form.whatsappNumber} onChange={(event) => setForm({ ...form, whatsappNumber: event.target.value })} placeholder="628123456789" className="w-full rounded-xl border border-gray-200 bg-white px-3.5 py-2.5 outline-none transition-all placeholder:text-gray-400 focus:border-[#0F2C23] focus:ring-2 focus:ring-[#0F2C23]/15" />
+            <p className="mt-1 text-[11px] text-gray-400">Nomor ini digunakan pada tombol Pesan via WhatsApp produk.</p>
           </Field>
 
           <Field label={`Galeri Foto (${form.images.length}/${MAX_PRODUCT_IMAGES})`}>

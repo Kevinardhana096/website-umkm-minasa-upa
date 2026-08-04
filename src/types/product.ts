@@ -1,5 +1,7 @@
 export interface Product {
   id: string;
+  storeId?: string;
+  createdBy?: string | null;
   name: string;
   merchantName: string;
   merchantAvatar?: string;

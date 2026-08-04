@@ -33,7 +33,11 @@ export async function updateSession(request: NextRequest) {
 
   // Refresh the cookie-based session. Authorization checks will be added
   // when the protected toko dashboard is introduced.
-  await supabase.auth.getClaims();
+  try {
+    await supabase.auth.getClaims();
+  } catch (error) {
+    console.warn("Sesi Supabase tidak dapat diperbarui:", error instanceof Error ? error.message : error);
+  }
 
   return supabaseResponse;
 }

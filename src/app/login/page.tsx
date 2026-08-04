@@ -15,9 +15,10 @@ export default async function LoginPage() {
         .from('profiles')
         .select('role')
         .eq('id', userId)
-        .maybeSingle<{ role: 'toko' | 'admin' }>();
+        .maybeSingle<{ role: 'toko' | 'admin' | 'anggota' }>();
       if (profile?.role === 'admin') redirect('/admin');
       if (profile?.role === 'toko') redirect('/dashboard');
+      if (profile?.role === 'anggota') redirect('/katalog');
     }
   }
 

@@ -11,6 +11,7 @@ import {
   Lock,
   MailCheck,
   RefreshCw,
+  Trash2,
   Unlock,
   UserPlus,
   Users,
@@ -19,7 +20,7 @@ import {
 } from "lucide-react";
 import { getPasswordValidationError, MIN_PASSWORD_LENGTH } from "@/lib/password-validation";
 
-type Role = "toko" | "admin";
+type Role = "toko" | "admin" | "anggota";
 
 interface AdminUser {
   id: string;
@@ -99,6 +100,7 @@ export function AdminUserManagement() {
   }, [loadUsers]);
 
   const adminCount = useMemo(() => users.filter((user) => user.role === "admin").length, [users]);
+  const memberCount = useMemo(() => users.filter((user) => user.role === "anggota").length, [users]);
   const bannedCount = useMemo(() => users.filter(isBanned).length, [users]);
 
   const createUser = async (event: FormEvent<HTMLFormElement>) => {
@@ -167,12 +169,40 @@ export function AdminUserManagement() {
     }
   };
 
+  const deleteUser = async (user: AdminUser) => {
+    const key = `${user.id}:delete` as PendingAction;
+    setPendingAction(key);
+    setErrorMessage("");
+    setSuccessMessage("");
+    try {
+      const response = await fetch("/api/admin/users", {
+        method: "DELETE",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ user_id: user.id }),
+      });
+      const payload = await response.json().catch(() => ({}));
+      if (!response.ok) throw new Error(payload.error || "Akun gagal dihapus.");
+      setSuccessMessage(`Akun ${user.email} berhasil dihapus permanen.`);
+      await loadUsers();
+    } catch (error) {
+      setErrorMessage(error instanceof Error ? error.message : "Akun gagal dihapus.");
+    } finally {
+      setPendingAction(null);
+    }
+  };
+
   const handleBanToggle = (user: AdminUser) => {
     const banned = isBanned(user);
     const message = banned
       ? `Aktifkan kembali akun ${user.email}?`
       : `Nonaktifkan akun ${user.email}? Akun tidak dapat login sampai diaktifkan kembali.`;
     if (window.confirm(message)) void updateUser(user.id, "ban", { banned: !banned });
+  };
+
+  const handleDelete = (user: AdminUser) => {
+    if (user.is_current_user) return;
+    const message = `Hapus permanen akun ${user.email}? Data profile, toko, produk, dan sesi login akun ini akan dihapus dan tidak dapat dipulihkan.`;
+    if (window.confirm(message)) void deleteUser(user);
   };
 
   const handleRoleChange = (user: AdminUser, role: Role) => {
@@ -211,7 +241,7 @@ export function AdminUserManagement() {
             <Users className="h-5 w-5 text-[#0F2C23]" />
             <h2 className="text-lg font-extrabold text-gray-900">Manajemen User</h2>
           </div>
-          <p className="mt-1 text-sm text-gray-500">Buat akun, atur role, dan aktifkan atau nonaktifkan akses login.</p>
+          <p className="mt-1 text-sm text-gray-500">Buat akun, atur role, kelola akses login, atau hapus akun secara permanen.</p>
         </div>
         <div className="flex flex-wrap items-center gap-2">
           <button
@@ -235,9 +265,10 @@ export function AdminUserManagement() {
       {errorMessage && <div role="alert" className="flex items-start gap-2 rounded-xl border border-red-100 bg-red-50 px-4 py-3 text-sm font-semibold text-red-700"><AlertCircle className="mt-0.5 h-4 w-4 shrink-0" /> <span>{errorMessage}</span></div>}
       {successMessage && <div role="status" className="flex items-start gap-2 rounded-xl border border-emerald-100 bg-emerald-50 px-4 py-3 text-sm font-semibold text-emerald-700"><CheckCircle2 className="mt-0.5 h-4 w-4 shrink-0" /> <span>{successMessage}</span></div>}
 
-      <div className="grid grid-cols-3 gap-2.5 sm:gap-4">
+      <div className="grid grid-cols-2 gap-2.5 sm:grid-cols-4 sm:gap-4">
         <UserMetric label="Total user" value={users.length} tone="green" />
         <UserMetric label="Admin" value={adminCount} tone="blue" />
+        <UserMetric label="Anggota" value={memberCount} tone="blue" />
         <UserMetric label="Dinonaktifkan" value={bannedCount} tone="amber" />
       </div>
 
@@ -339,6 +370,7 @@ export function AdminUserManagement() {
                 >
                   <option value="toko">Toko</option>
                   <option value="admin">Admin</option>
+                  <option value="anggota">Anggota</option>
                 </select>
               </div>
 
@@ -418,7 +450,7 @@ export function AdminUserManagement() {
           <div className="overflow-x-auto">
             <table className="w-full min-w-[980px] text-left text-sm">
               <thead className="border-b border-gray-100 bg-gray-50/70 text-xs font-bold uppercase tracking-wider text-gray-500"><tr><th className="px-5 py-4">User</th><th className="px-5 py-4">Role</th><th className="px-5 py-4">Toko</th><th className="px-5 py-4">Status</th><th className="px-5 py-4">Dibuat</th><th className="px-5 py-4">Aksi</th></tr></thead>
-              <tbody className="divide-y divide-gray-100">{users.map((user) => <UserRow key={user.id} user={user} pendingAction={pendingAction} onRoleChange={handleRoleChange} onBanToggle={handleBanToggle} onResetPassword={handleResetPassword} />)}</tbody>
+              <tbody className="divide-y divide-gray-100">{users.map((user) => <UserRow key={user.id} user={user} pendingAction={pendingAction} onRoleChange={handleRoleChange} onBanToggle={handleBanToggle} onResetPassword={handleResetPassword} onDelete={handleDelete} />)}</tbody>
             </table>
           </div>
         )}
@@ -427,16 +459,16 @@ export function AdminUserManagement() {
   );
 }
 
-function UserRow({ user, pendingAction, onRoleChange, onBanToggle, onResetPassword }: { user: AdminUser; pendingAction: PendingAction; onRoleChange: (user: AdminUser, role: Role) => void; onBanToggle: (user: AdminUser) => void; onResetPassword: (user: AdminUser) => void }) {
+function UserRow({ user, pendingAction, onRoleChange, onBanToggle, onResetPassword, onDelete }: { user: AdminUser; pendingAction: PendingAction; onRoleChange: (user: AdminUser, role: Role) => void; onBanToggle: (user: AdminUser) => void; onResetPassword: (user: AdminUser) => void; onDelete: (user: AdminUser) => void }) {
   const banned = isBanned(user);
   const isPending = pendingAction?.startsWith(`${user.id}:`);
   return <tr className="hover:bg-gray-50/70">
     <td className="px-5 py-4"><p className="font-bold text-gray-900">{user.full_name || "Tanpa nama"}{user.is_current_user && <span className="ml-2 rounded-full bg-[#E8F3EF] px-2 py-0.5 text-[10px] font-bold text-[#0F2C23]">Anda</span>}</p><p className="mt-1 inline-flex items-center gap-1 text-xs text-gray-500"><MailCheck className="h-3.5 w-3.5" />{user.email}</p></td>
-    <td className="px-5 py-4"><select value={user.role} disabled={Boolean(isPending) || user.is_current_user} onChange={(event) => onRoleChange(user, event.target.value as Role)} className="rounded-lg border border-gray-200 bg-white px-2.5 py-1.5 text-xs font-bold text-gray-700 outline-none focus:border-[#0F2C23] disabled:cursor-not-allowed disabled:opacity-60"><option value="toko">Toko</option><option value="admin">Admin</option></select></td>
+    <td className="px-5 py-4"><select value={user.role} disabled={Boolean(isPending) || user.is_current_user} onChange={(event) => onRoleChange(user, event.target.value as Role)} className="rounded-lg border border-gray-200 bg-white px-2.5 py-1.5 text-xs font-bold text-gray-700 outline-none focus:border-[#0F2C23] disabled:cursor-not-allowed disabled:opacity-60"><option value="toko">Toko</option><option value="admin">Admin</option><option value="anggota">Anggota</option></select></td>
     <td className="px-5 py-4"><p className="font-semibold text-gray-700">{user.store_name || "Belum memiliki toko"}</p>{user.store_is_active !== null && <p className={`mt-1 text-xs font-semibold ${user.store_is_active ? "text-emerald-600" : "text-gray-500"}`}>{user.store_is_active ? "Toko aktif" : "Toko nonaktif"}</p>}</td>
     <td className="px-5 py-4">{banned ? <span className="inline-flex items-center gap-1.5 rounded-full bg-red-50 px-2.5 py-1 text-xs font-bold text-red-700"><XCircle className="h-3.5 w-3.5" /> Nonaktif</span> : <span className="inline-flex items-center gap-1.5 rounded-full bg-emerald-50 px-2.5 py-1 text-xs font-bold text-emerald-700"><CheckCircle2 className="h-3.5 w-3.5" /> Aktif</span>}<p className={`mt-1 text-xs ${user.email_confirmed ? "text-gray-500" : "text-amber-600"}`}>{user.email_confirmed ? "Email terkonfirmasi" : "Email belum terkonfirmasi"}</p></td>
     <td className="px-5 py-4 text-xs text-gray-500">{formatDate(user.created_at)}</td>
-    <td className="px-5 py-4"><div className="flex flex-wrap gap-2"><button type="button" onClick={() => onBanToggle(user)} disabled={Boolean(isPending) || user.is_current_user} className="inline-flex items-center gap-1.5 rounded-lg border border-gray-200 px-2.5 py-1.5 text-xs font-bold text-gray-700 hover:bg-gray-50 disabled:cursor-not-allowed disabled:opacity-50">{banned ? <Unlock className="h-3.5 w-3.5" /> : <Lock className="h-3.5 w-3.5" />}{banned ? "Aktifkan" : "Nonaktifkan"}</button><button type="button" onClick={() => onResetPassword(user)} disabled={Boolean(isPending)} className="inline-flex items-center gap-1.5 rounded-lg border border-gray-200 px-2.5 py-1.5 text-xs font-bold text-gray-700 hover:bg-gray-50 disabled:cursor-not-allowed disabled:opacity-50"><KeyRound className="h-3.5 w-3.5" /> Reset password</button></div></td>
+    <td className="px-5 py-4"><div className="flex flex-wrap gap-2"><button type="button" onClick={() => onBanToggle(user)} disabled={Boolean(isPending) || user.is_current_user} className="inline-flex items-center gap-1.5 rounded-lg border border-gray-200 px-2.5 py-1.5 text-xs font-bold text-gray-700 hover:bg-gray-50 disabled:cursor-not-allowed disabled:opacity-50">{banned ? <Unlock className="h-3.5 w-3.5" /> : <Lock className="h-3.5 w-3.5" />}{banned ? "Aktifkan" : "Nonaktifkan"}</button><button type="button" onClick={() => onResetPassword(user)} disabled={Boolean(isPending)} className="inline-flex items-center gap-1.5 rounded-lg border border-gray-200 px-2.5 py-1.5 text-xs font-bold text-gray-700 hover:bg-gray-50 disabled:cursor-not-allowed disabled:opacity-50"><KeyRound className="h-3.5 w-3.5" /> Reset password</button><button type="button" onClick={() => onDelete(user)} disabled={Boolean(isPending) || user.is_current_user} className="inline-flex items-center gap-1.5 rounded-lg border border-rose-200 px-2.5 py-1.5 text-xs font-bold text-rose-700 hover:bg-rose-50 disabled:cursor-not-allowed disabled:opacity-50"><Trash2 className="h-3.5 w-3.5" /> Hapus akun</button></div></td>
   </tr>;
 }
 

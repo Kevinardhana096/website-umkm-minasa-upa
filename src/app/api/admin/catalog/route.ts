@@ -1,7 +1,9 @@
 import { NextResponse } from "next/server";
 import { createClient as createSupabaseClient } from "@supabase/supabase-js";
 import { createClient } from "@/lib/supabase/server";
+import { revalidatePublicCatalogCache } from "@/lib/catalog";
 import { MAX_PRODUCT_IMAGES, normalizeProductRow, normalizeProductRows, PRODUCT_SELECT, type ProductQueryRow } from "@/lib/products";
+import { validateWhatsappNumber } from "@/lib/whatsapp";
 
 export const dynamic = "force-dynamic";
 
@@ -202,6 +204,12 @@ async function updateProduct(
   const productId = getString(formData.get("id") ?? undefined);
   const name = getString(formData.get("name") ?? undefined);
   const description = getString(formData.get("description") ?? undefined);
+  let whatsappNumber = "";
+  try {
+    whatsappNumber = validateWhatsappNumber(getString(formData.get("whatsapp_number") ?? undefined));
+  } catch (error) {
+    return jsonError(error instanceof Error ? error.message : "Nomor WhatsApp belum valid.", 400);
+  }
   const priceInput = getString(formData.get("price") ?? undefined);
   const isAvailableInput = getString(formData.get("is_available") ?? undefined);
   const isVisibleInput = getString(formData.get("is_visible") ?? undefined);
@@ -248,6 +256,7 @@ async function updateProduct(
       p_store_id: existingProduct.store_id,
       p_name: name,
       p_description: description,
+      p_whatsapp_number: whatsappNumber,
       p_price: price,
       p_is_available: isAvailable,
       p_is_visible: isVisible,
@@ -285,6 +294,7 @@ async function updateProduct(
       is_available: isAvailable,
       is_visible: isVisible,
     });
+    revalidatePublicCatalogCache();
 
     return NextResponse.json({ product: normalizeProductRow(data) });
   } catch (error) {
@@ -339,6 +349,7 @@ async function updateStore(
     name,
     is_active: body.is_active,
   });
+  revalidatePublicCatalogCache();
   return NextResponse.json({ store: data });
 }
 
@@ -401,6 +412,7 @@ export async function DELETE(request: Request) {
         console.error("Failed to remove deleted product image", cleanupError);
       })));
       await recordAdminAudit(serviceClient, admin.userId, "delete", "product", id, {});
+      revalidatePublicCatalogCache();
       return NextResponse.json({ ok: true });
     }
 
@@ -432,6 +444,7 @@ export async function DELETE(request: Request) {
     await recordAdminAudit(serviceClient, admin.userId, "delete", "store", id, {
       deleted_product_count: products?.length ?? 0,
     });
+    revalidatePublicCatalogCache();
     return NextResponse.json({ ok: true });
   } catch (error) {
     console.error("Failed to delete admin catalog data", error);

@@ -76,13 +76,17 @@ export const ProductDetailModal: React.FC<ProductDetailModalProps> = ({
 
   const galleryImages = product.imageUrls?.length
     ? product.imageUrls
-    : [product.imageUrl ?? '/logo_umkm.png'];
-  const activeIndex = Math.min(activeImageIndex, galleryImages.length - 1);
+    : product.imageUrl
+      ? [product.imageUrl]
+      : [];
+  const activeIndex = galleryImages.length > 0
+    ? Math.min(activeImageIndex, galleryImages.length - 1)
+    : 0;
 
   return (
     <>
       {/* Fullscreen Lightbox Zoom */}
-      {isZoomed && (
+      {isZoomed && galleryImages.length > 0 && (
         <div 
           className="fixed inset-0 z-[70] bg-black/95 backdrop-blur-md flex items-center justify-center p-4 cursor-zoom-out animate-in fade-in duration-200"
           onClick={() => setIsZoomed(false)}
@@ -134,15 +138,31 @@ export const ProductDetailModal: React.FC<ProductDetailModalProps> = ({
           <div className="w-full md:w-[48%] md:sticky md:top-0 self-start shrink-0 p-5 sm:p-6 bg-gradient-to-b from-amber-50/40 via-white to-gray-50/50 rounded-t-[28px] md:rounded-tr-none md:rounded-l-[28px] border-b md:border-b-0 md:border-r border-gray-100">
             {/* Main Stage Image */}
             <div className="relative w-full aspect-square rounded-2xl overflow-hidden bg-white shadow-sm border border-gray-100 group">
-              <Image
-                src={galleryImages[activeIndex]}
-                alt={product.name}
-                fill
-                unoptimized
-                sizes="(max-width: 768px) 100vw, 48vw"
-                className="w-full h-full object-cover object-center group-hover:scale-105 transition-transform duration-700 ease-out cursor-zoom-in"
-                onClick={() => setIsZoomed(true)}
-              />
+              {galleryImages.length > 0 ? (
+                <>
+                  <Image
+                    src={galleryImages[activeIndex]}
+                    alt={product.name}
+                    fill
+                    unoptimized
+                    sizes="(max-width: 768px) 100vw, 48vw"
+                    className="w-full h-full object-cover object-center group-hover:scale-105 transition-transform duration-700 ease-out cursor-zoom-in"
+                    onClick={() => setIsZoomed(true)}
+                  />
+
+                  {/* Bottom Subtle Overlay */}
+                  <div className="absolute inset-x-0 bottom-0 h-16 bg-gradient-to-t from-black/30 to-transparent pointer-events-none" />
+
+                  {/* Click to Zoom Hint */}
+                  <div className="absolute bottom-3 right-3 text-[10px] text-white/90 font-medium bg-black/40 backdrop-blur-sm px-2.5 py-1 rounded-full pointer-events-none">
+                    Klik untuk Zoom
+                  </div>
+                </>
+              ) : (
+                <div className="absolute inset-0 flex items-center justify-center p-6 text-center text-sm font-medium text-gray-400">
+                  Foto produk belum tersedia
+                </div>
+              )}
 
               {/* Category Pill Tag */}
               <div className="absolute top-3.5 left-3.5 z-10 bg-white/90 backdrop-blur-md px-3 py-1 rounded-full shadow-sm border border-gray-100 flex items-center gap-1.5">
@@ -163,40 +183,36 @@ export const ProductDetailModal: React.FC<ProductDetailModalProps> = ({
                 >
                   <Heart className={`w-4 h-4 ${isLiked ? 'fill-rose-500' : ''}`} />
                 </button>
-                <button
-                  onClick={() => setIsZoomed(true)}
-                  className="p-2 rounded-full bg-white/90 hover:bg-white text-gray-700 backdrop-blur-md shadow-sm border border-gray-100 transition-all cursor-pointer"
-                  title="Perbesar Gambar"
-                >
-                  <Maximize2 className="w-4 h-4" />
-                </button>
-              </div>
-
-              {/* Bottom Subtle Overlay */}
-              <div className="absolute inset-x-0 bottom-0 h-16 bg-gradient-to-t from-black/30 to-transparent pointer-events-none" />
-
-              {/* Click to Zoom Hint */}
-              <div className="absolute bottom-3 right-3 text-[10px] text-white/90 font-medium bg-black/40 backdrop-blur-sm px-2.5 py-1 rounded-full pointer-events-none">
-                Klik untuk Zoom
+                {galleryImages.length > 0 && (
+                  <button
+                    onClick={() => setIsZoomed(true)}
+                    className="p-2 rounded-full bg-white/90 hover:bg-white text-gray-700 backdrop-blur-md shadow-sm border border-gray-100 transition-all cursor-pointer"
+                    title="Perbesar Gambar"
+                  >
+                    <Maximize2 className="w-4 h-4" />
+                  </button>
+                )}
               </div>
             </div>
 
             {/* Thumbnail Selector Strip */}
-            <div className="mt-4 flex items-center justify-center gap-2.5">
-              {galleryImages.map((img, idx) => (
-                <button
-                  key={idx}
-                  onClick={() => setActiveImageIndex(idx)}
-                  className={`relative w-14 h-14 rounded-xl overflow-hidden border-2 transition-all duration-200 cursor-pointer ${
-                    activeIndex === idx
-                      ? 'border-[#963E1B] ring-2 ring-[#963E1B]/20 scale-105'
-                      : 'border-transparent opacity-60 hover:opacity-100 hover:border-gray-300'
-                  }`}
-                >
-                  <Image src={img} alt={`Sudut ${idx + 1}`} fill unoptimized sizes="56px" className="object-cover" />
-                </button>
-              ))}
-            </div>
+            {galleryImages.length > 0 && (
+              <div className="mt-4 flex items-center justify-center gap-2.5">
+                {galleryImages.map((img, idx) => (
+                  <button
+                    key={idx}
+                    onClick={() => setActiveImageIndex(idx)}
+                    className={`relative w-14 h-14 rounded-xl overflow-hidden border-2 transition-all duration-200 cursor-pointer ${
+                      activeIndex === idx
+                        ? 'border-[#963E1B] ring-2 ring-[#963E1B]/20 scale-105'
+                        : 'border-transparent opacity-60 hover:opacity-100 hover:border-gray-300'
+                    }`}
+                  >
+                    <Image src={img} alt={`Sudut ${idx + 1}`} fill unoptimized sizes="56px" className="object-cover" />
+                  </button>
+                ))}
+              </div>
+            )}
           </div>
 
           {/* ── RIGHT COLUMN: Product & Merchant Details ── */}

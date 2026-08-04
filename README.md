@@ -27,14 +27,16 @@ You can start editing the page by modifying `src/app/page.tsx`. The page auto-up
 3. Isi `NEXT_PUBLIC_SUPABASE_URL` dan `NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY` dari Project Settings → API.
 4. Jalankan isi `supabase/schema.sql` di Supabase SQL Editor.
 5. Jalankan isi `supabase/admin-dashboard.sql` setelah akun admin tersedia agar admin dapat membaca seluruh toko dan produk.
-6. Jalankan isi `supabase/role-hardening.sql` agar hanya role `toko` yang dapat membuat atau mengubah toko, produk, dan foto.
+6. Jalankan isi `supabase/role-hardening.sql` agar hanya role `toko` yang dapat membuat atau mengubah data toko dan produknya.
 7. Jalankan isi `supabase/product-gallery.sql` untuk mengaktifkan galeri multi-gambar dan melakukan backfill gambar lama.
 8. Jalankan isi `supabase/atomic-product-write.sql` agar produk dan galeri disimpan dalam satu transaksi database.
 9. Jalankan isi `supabase/admin-audit.sql` untuk menyimpan jejak perubahan katalog dan user oleh admin.
+10. Jalankan isi `supabase/member-products.sql` untuk mengaktifkan role `anggota`, normalisasi nama toko, WhatsApp per produk, kepemilikan produk, dan policy RLS anggota.
+11. Untuk project yang sudah ada, jalankan `supabase/storage-hardening.sql` agar bucket membatasi file maksimal 5 MB dan hanya menerima JPG, PNG, atau WebP.
+12. Aktifkan Email provider pada Authentication → Providers untuk login email/password.
+13. Pada Authentication → Providers → Email, nonaktifkan **Allow new users to sign up** dan **Confirm Email**. Akun toko hanya dibuat oleh pengelola melalui proses internal dan dapat login tanpa verifikasi email.
+
 Opsional, jalankan isi `supabase/chat-answer-cache.sql` jika ingin menyimpan jawaban web chat secara persisten di Supabase.
-10. Untuk project yang sudah ada, jalankan `supabase/storage-hardening.sql` agar bucket membatasi file maksimal 5 MB dan hanya menerima JPG, PNG, atau WebP.
-11. Aktifkan Email provider pada Authentication → Providers untuk login email/password.
-12. Pada Authentication → Providers → Email, nonaktifkan **Allow new users to sign up** dan **Confirm Email**. Akun toko hanya dibuat oleh pengelola melalui proses internal dan dapat login tanpa verifikasi email.
 
 Pada Authentication → URL Configuration, tambahkan `http://localhost:3000/auth/callback` ke Redirect URLs. Untuk production, tambahkan juga URL domain production dengan path yang sama. Alur lupa kata sandi memakai callback `/auth/callback` lalu mengarahkan pengguna ke `/reset-password`.
 
@@ -44,7 +46,7 @@ Jangan memasukkan secret/service-role key ke variabel `NEXT_PUBLIC_*` atau ke ko
 
 ## Chat katalog
 
-Chat katalog menggunakan endpoint server `/api/chat`. Pertanyaan tentang harga, ketersediaan, dan kontak dijawab langsung dari data katalog publik. Profil publik Desa Minasa Upa, kelompok UMKM, produk, dan kondisi usaha diambil dari knowledge terkurasi proyek; pertanyaan yang meminta informasi terbaru memakai Google Search grounding Gemini lalu Mistral `web_search` sebagai fallback. Pertanyaan bebas lainnya dapat diteruskan ke rangkaian provider AI yang kompatibel dengan format OpenAI Chat Completions.
+Chat katalog menggunakan endpoint server `/api/chat`. Pertanyaan tentang harga, ketersediaan, dan kontak dijawab langsung dari data katalog publik. Profil publik Desa Minasa Upa, kelompok UMKM, produk, dan kondisi usaha diambil dari knowledge terkurasi proyek; pertanyaan yang meminta informasi terbaru memakai Google Search grounding Gemini lalu Mistral `web_search` sebagai fallback. Pertanyaan yang masih berada dalam cakupan website, katalog, desa, atau UMKM dapat diteruskan ke rangkaian provider AI yang kompatibel dengan format OpenAI Chat Completions.
 
 Tanpa konfigurasi provider AI, chat tetap berfungsi menggunakan retrieval katalog dan fallback rule-based. Untuk mengaktifkan fallback Gemini → Mistral, tambahkan key dan model provider yang diperlukan ke `.env.local` atau Environment Variables Vercel, lalu restart/deploy aplikasi:
 
@@ -60,11 +62,15 @@ MISTRAL_CONVERSATIONS_API_URL=https://api.mistral.ai/v1/conversations
 # MISTRAL_WEB_SEARCH_MODEL=your-mistral-web-search-model
 ```
 
-Konfigurasi lama `AI_CHAT_API_URL`, `AI_CHAT_API_KEY`, dan `AI_CHAT_MODEL` tetap diterima sebagai konfigurasi Gemini utama. Semua API key tidak boleh menggunakan awalan `NEXT_PUBLIC_` dan tidak pernah dikirim ke browser. Knowledge profil dipakai untuk pertanyaan statis; angka profil diberi konteks sebagai snapshot dokumen dan bukan data real-time. Pertanyaan terbaru memakai native Gemini `generateContent` dengan `google_search`; jika gagal, sistem mencoba Mistral Conversations API dengan `web_search`. Keduanya memiliki timeout 12 detik dan mengembalikan maksimal 5 sumber. Endpoint membatasi pertanyaan maksimal 800 karakter, sekitar 20 request per alamat IP per menit, dan waktu tunggu provider 8 detik.
+Konfigurasi lama `AI_CHAT_API_URL`, `AI_CHAT_API_KEY`, dan `AI_CHAT_MODEL` tetap diterima sebagai konfigurasi Gemini utama. Semua API key tidak boleh menggunakan awalan `NEXT_PUBLIC_` dan tidak pernah dikirim ke browser. Knowledge profil dipakai untuk pertanyaan statis; angka profil diberi konteks sebagai snapshot profil dan bukan data real-time. Pertanyaan terbaru memakai native Gemini `generateContent` dengan `google_search`; jika gagal, sistem mencoba Mistral Conversations API dengan `web_search`. Keduanya memiliki timeout 12 detik dan menyimpan maksimal 5 sumber secara internal untuk verifikasi dan cache, tanpa menampilkan URL atau daftar sumber di jawaban chat. Endpoint membatasi pertanyaan maksimal 800 karakter, sekitar 20 request per alamat IP per menit, dan waktu tunggu provider 8 detik.
 
 Jawaban web yang berhasil dapat disimpan di `chat_answer_cache` selama TTL `AI_CHAT_WEB_CACHE_TTL_SECONDS` (default 6 jam), sehingga pertanyaan yang sama tidak perlu memanggil web lagi sampai cache kedaluwarsa. Cache hanya aktif jika migration cache sudah dijalankan dan `SUPABASE_SERVICE_ROLE_KEY` tersedia di server.
 
 Jika provider chat tersedia, router intent semantik membantu mengenali variasi kalimat seperti "di mana letak Desa Minasa Upa?" sebagai pertanyaan knowledge lokasi tanpa bergantung pada kecocokan kata. Jika router gagal, pola intent lokal tetap menjadi fallback. Router dapat dinonaktifkan dengan `AI_CHAT_INTENT_ROUTING_ENABLED=false`.
+
+Chat dibatasi pada katalog UMKM, Desa Minasa Upa, Kelompok UMKM Wanita Tangguh, dan penggunaan publik website. Pertanyaan penggunaan website seperti cara melihat produk, memakai chat, menghubungi penjual, login, reset password, atau melihat lokasi dijawab dari knowledge website. Permintaan rahasia seperti API key, password rahasia, bypass login, atau detail database, serta pertanyaan coding umum, politik, medis, dan hiburan, ditolak tanpa web search atau cache.
+
+Routing chat memakai policy guard setelah classifier AI: route knowledge, website, katalog, dan web harus memiliki sinyal cakupan yang sesuai sebelum dijalankan. Konteks produk hanya dipakai untuk pertanyaan lanjutan seperti "harganya berapa?" atau "bagaimana memesannya?", bukan untuk memaksa pertanyaan baru menjadi pertanyaan produk. Riwayat maksimal 8 pesan terakhir dapat dikirim sebagai konteks percakapan. Pertanyaan harga, stok, pemesanan, dan kontak dapat digabung dalam satu jawaban; kebijakan pembayaran, COD, pengiriman, retur, dan komplain yang belum tersedia diarahkan untuk dikonfirmasi kepada penjual.
 
 > Penting: halaman `/register` hanya menutup pendaftaran dari sisi aplikasi. Menonaktifkan public sign-up di pengaturan Supabase tetap wajib agar endpoint Auth tidak dapat digunakan untuk membuat akun publik.
 
@@ -85,9 +91,11 @@ npm run create:admin
 
 Script bersifat idempotent: jika email sudah ada, password tidak diubah; user dikonfirmasi dan profile-nya diatur menjadi role `admin`. Password hanya dipakai saat membuat user baru.
 
-Setelah login sebagai admin, halaman `/admin` menyediakan monitoring toko dan produk secara menyeluruh, edit profil toko lintas toko, edit/hapus produk lintas toko, serta menu **Manajemen user** untuk membuat user toko/admin, mengubah role, menonaktifkan atau mengaktifkan akses login, dan mereset password. Fitur mutation admin dan pencatatan audit memakai `SUPABASE_SERVICE_ROLE_KEY` di Route Handler server; tambahkan key tersebut ke `.env.local` saat development atau ke Environment Variables Vercel (tanpa awalan `NEXT_PUBLIC_`) bila fitur ini dipakai di production. Tabel audit dapat dibaca oleh admin melalui policy RLS, sedangkan penulisannya hanya dilakukan oleh route server. Jangan pernah mengekspos atau memasukkan key tersebut ke kode browser.
+Setelah login sebagai admin, halaman `/admin` menyediakan monitoring toko dan produk secara menyeluruh, edit profil toko lintas toko, edit/hapus produk lintas toko, serta menu **Manajemen user** untuk membuat user toko/admin/anggota, mengubah role, menonaktifkan atau mengaktifkan akses login, dan mereset password. Fitur mutation admin dan pencatatan audit memakai `SUPABASE_SERVICE_ROLE_KEY` di Route Handler server; tambahkan key tersebut ke `.env.local` saat development atau ke Environment Variables Vercel (tanpa awalan `NEXT_PUBLIC_`) bila fitur ini dipakai di production. Tabel audit dapat dibaca oleh admin melalui policy RLS, sedangkan penulisannya hanya dilakukan oleh route server. Jangan pernah mengekspos atau memasukkan key tersebut ke kode browser.
 
 Pada dashboard toko, menu **Pengaturan Toko** dapat digunakan untuk mengubah nama usaha, nama pengelola, deskripsi, nomor WhatsApp, dan status tampil toko di katalog publik.
+
+Akun `anggota` langsung diarahkan ke `/katalog`. Anggota dapat menambahkan nama toko dan nomor WhatsApp yang berbeda pada setiap produk, serta hanya dapat mengedit atau menghapus produk yang dibuat oleh akun tersebut.
 
 Pada development lokal, kartu **Dev Access** di halaman login dapat memakai akun ini sebagai shortcut. Tambahkan `DEV_ACCESS_EMAIL` dan `DEV_ACCESS_PASSWORD` di `.env.local`, lalu restart `npm run dev`. Endpoint shortcut hanya aktif ketika `NODE_ENV=development` dan tidak tersedia pada deployment production.
 

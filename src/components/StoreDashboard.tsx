@@ -6,7 +6,7 @@ import { ArrowLeft, CheckCircle2, Eye, LogOut, Package } from "lucide-react";
 import { DashboardSidebar, type DashboardTab } from "@/components/dashboard/DashboardSidebar";
 import { ProductFormModal } from "@/components/dashboard/ProductFormModal";
 import { ProductTable } from "@/components/dashboard/ProductTable";
-import { createCurrentStore, deleteProduct, getCurrentStoreData, isStoreProfileComplete, saveProduct, updateCurrentStore, type NewProductInput, type StoreData, type StoreProfileInput } from "@/lib/store-service";
+import { createCurrentStore, deleteProduct, getCurrentStoreData, isStoreProfileComplete, revalidatePublicCatalog, saveProduct, updateCurrentStore, type NewProductInput, type StoreData, type StoreProfileInput } from "@/lib/store-service";
 import type { ProductRow } from "@/lib/products";
 import { InstitutionalLogos } from "@/components/InstitutionalLogos";
 import { StoreProfileForm } from "@/components/dashboard/StoreProfileForm";
@@ -65,6 +65,7 @@ export function StoreDashboard({ onBackToCatalog, onSignOut }: StoreDashboardPro
     setError("");
     try {
       const product = await saveProduct(storeData.store.id, input);
+      await revalidatePublicCatalog();
       setStoreData((current) => {
         if (!current) return current;
         const exists = Boolean(input.id);
@@ -90,6 +91,7 @@ export function StoreDashboard({ onBackToCatalog, onSignOut }: StoreDashboardPro
     setError("");
     try {
       await deleteProduct(product.id);
+      await revalidatePublicCatalog();
       setStoreData((current) => current ? { ...current, products: current.products.filter((item) => item.id !== product.id) } : current);
     } catch (deleteError) {
       setError(deleteError instanceof Error ? deleteError.message : "Produk gagal dihapus.");
@@ -104,6 +106,7 @@ export function StoreDashboard({ onBackToCatalog, onSignOut }: StoreDashboardPro
       const store = storeData.store
         ? await updateCurrentStore(storeData.store.id, input)
         : await createCurrentStore(input);
+      await revalidatePublicCatalog();
       setStoreData((current) => current ? { ...current, store } : current);
     } catch (saveError) {
       setError(saveError instanceof Error ? saveError.message : "Profil toko gagal diperbarui.");
@@ -276,6 +279,7 @@ export function StoreDashboard({ onBackToCatalog, onSignOut }: StoreDashboardPro
       <ProductFormModal
         key={`${editingProduct?.id ?? "new"}-${isAddModalOpen ? "open" : "closed"}`}
         product={editingProduct}
+        defaultWhatsappNumber={store.whatsapp_number}
         isOpen={isAddModalOpen}
         isSaving={isSaving}
         onClose={closeProductModal}

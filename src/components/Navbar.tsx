@@ -42,7 +42,7 @@ export const Navbar: React.FC<NavbarProps> = ({
         .from('profiles')
         .select('role')
         .eq('id', userData.user.id)
-        .maybeSingle<{ role: 'toko' | 'admin' }>();
+        .maybeSingle<{ role: 'toko' | 'admin' | 'anggota' }>();
       if (cancelled) return;
 
       if (profile?.role === 'admin') {
@@ -51,6 +51,9 @@ export const Navbar: React.FC<NavbarProps> = ({
       } else if (profile?.role === 'toko') {
         setDashboardHref('/dashboard');
         setDashboardLabel('Dashboard Toko');
+      } else if (profile?.role === 'anggota') {
+        setDashboardHref('/katalog');
+        setDashboardLabel('Katalog Anggota');
       } else {
         setDashboardHref(null);
         setDashboardLabel('Login Pengelola');

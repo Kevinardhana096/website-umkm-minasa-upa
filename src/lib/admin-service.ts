@@ -29,12 +29,14 @@ export interface AdminMonitoringData {
 export interface AdminProductSummary {
   id: string;
   store_id: string;
+  created_by: string | null;
   store_name: string;
   store_is_active: boolean;
   name: string;
   description: string;
   image_path: string | null;
   product_images: ProductImageRow[];
+  whatsapp_number: string | null;
   price: number | string | null;
   is_available: boolean;
   is_visible: boolean;

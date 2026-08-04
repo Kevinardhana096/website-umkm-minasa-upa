@@ -4,14 +4,17 @@ import React from 'react';
 import Image from 'next/image';
 import { Product } from '@/types/product';
 import { formatRupiah } from '@/lib/products';
-import { ShieldCheck, MapPin, Eye, Clock, CheckCircle2 } from 'lucide-react';
+import { ShieldCheck, MapPin, Eye, Clock, CheckCircle2, Edit, Trash2 } from 'lucide-react';
 
 interface ProductCardProps {
   product: Product;
   onDetailClick: (product: Product) => void;
+  canManage?: boolean;
+  onEdit?: (product: Product) => void;
+  onDelete?: (product: Product) => void;
 }
 
-export const ProductCard: React.FC<ProductCardProps> = ({ product, onDetailClick }) => {
+export const ProductCard: React.FC<ProductCardProps> = ({ product, onDetailClick, canManage = false, onEdit, onDelete }) => {
   const formattedPrice = formatRupiah(product.price);
 
   return (
@@ -21,6 +24,7 @@ export const ProductCard: React.FC<ProductCardProps> = ({ product, onDetailClick
       aria-label={`Lihat detail ${product.name}`}
       onClick={() => onDetailClick(product)}
       onKeyDown={(event) => {
+        if (event.target !== event.currentTarget) return;
         if (event.key === 'Enter' || event.key === ' ') {
           event.preventDefault();
           onDetailClick(product);
@@ -119,6 +123,27 @@ export const ProductCard: React.FC<ProductCardProps> = ({ product, onDetailClick
             <span className="hidden sm:inline">Detail</span>
           </span>
         </div>
+
+        {canManage && (
+          <div className="flex items-center gap-2 px-3 pb-3 sm:px-5 sm:pb-5" onClick={(event) => event.stopPropagation()}>
+            <button
+              type="button"
+              onClick={() => onEdit?.(product)}
+              className="inline-flex flex-1 items-center justify-center gap-1.5 rounded-lg border border-gray-200 px-2 py-1.5 text-[10px] font-bold text-gray-600 hover:bg-gray-50 sm:text-xs"
+              aria-label={`Edit produk ${product.name}`}
+            >
+              <Edit className="h-3.5 w-3.5" /> Edit
+            </button>
+            <button
+              type="button"
+              onClick={() => onDelete?.(product)}
+              className="inline-flex flex-1 items-center justify-center gap-1.5 rounded-lg border border-rose-200 px-2 py-1.5 text-[10px] font-bold text-rose-700 hover:bg-rose-50 sm:text-xs"
+              aria-label={`Hapus produk ${product.name}`}
+            >
+              <Trash2 className="h-3.5 w-3.5" /> Hapus
+            </button>
+          </div>
+        )}
       </div>
     </article>
   );

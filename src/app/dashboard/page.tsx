@@ -18,12 +18,13 @@ export default async function DashboardPage() {
     .from("profiles")
     .select("role")
     .eq("id", userId)
-    .maybeSingle<{ role: "toko" | "admin" }>();
+    .maybeSingle<{ role: "toko" | "admin" | "anggota" }>();
 
-  if (profileError || !profile || (profile.role !== "toko" && profile.role !== "admin")) {
+  if (profileError || !profile || (profile.role !== "toko" && profile.role !== "admin" && profile.role !== "anggota")) {
     redirect("/login");
   }
   if (profile.role === "admin") redirect("/admin");
+  if (profile.role === "anggota") redirect("/katalog");
 
   return <DashboardClient />;
 }

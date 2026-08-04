@@ -22,10 +22,10 @@ export default async function AdminPage() {
     .from("profiles")
     .select("role")
     .eq("id", userId)
-    .maybeSingle<{ role: "toko" | "admin" }>();
+    .maybeSingle<{ role: "toko" | "admin" | "anggota" }>();
 
   if (profileError || !profile) redirect("/login");
-  if (profile.role !== "admin") redirect("/dashboard");
+  if (profile.role !== "admin") redirect(profile.role === "anggota" ? "/katalog" : "/dashboard");
 
   let monitoringData: Awaited<ReturnType<typeof getAdminMonitoringData>> | null = null;
   let monitoringError = "";

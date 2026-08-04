@@ -1,11 +1,12 @@
 import { NextResponse } from "next/server";
 import { createClient as createSupabaseClient } from "@supabase/supabase-js";
 import { createClient } from "@/lib/supabase/server";
+import { revalidatePublicCatalogCache } from "@/lib/catalog";
 import { getPasswordValidationError, isValidPassword } from "@/lib/password-validation";
 
 export const dynamic = "force-dynamic";
 
-type Role = "toko" | "admin";
+type Role = "toko" | "admin" | "anggota";
 type AdminAction = "role" | "ban" | "reset_password";
 
 interface ProfileRow {
@@ -18,6 +19,11 @@ interface StoreRow {
   owner_id: string;
   name: string;
   is_active: boolean;
+}
+
+interface ProductImageCleanupRow {
+  image_path: string | null;
+  product_images: Array<{ image_path: string }> | null;
 }
 
 function jsonError(message: string, status: number) {
@@ -61,10 +67,49 @@ async function listAllUsers(serviceClient: NonNullable<ReturnType<typeof getServ
   return users;
 }
 
+async function getUserProductImagePaths(
+  serviceClient: NonNullable<ReturnType<typeof getServiceClient>>,
+  userId: string,
+) {
+  const { data: stores, error: storesError } = await serviceClient
+    .from("stores")
+    .select("id")
+    .eq("owner_id", userId)
+    .returns<Array<{ id: string }>>();
+  if (storesError) throw storesError;
+
+  const storeIds = (stores ?? []).map((store) => store.id);
+  if (storeIds.length === 0) return [];
+
+  const { data: products, error: productsError } = await serviceClient
+    .from("products")
+    .select("image_path, product_images(image_path)")
+    .in("store_id", storeIds)
+    .returns<ProductImageCleanupRow[]>();
+  if (productsError) throw productsError;
+
+  return [...new Set((products ?? []).flatMap((product) => [
+    product.image_path,
+    ...(product.product_images ?? []).map((image) => image.image_path),
+  ]).filter((path): path is string => typeof path === "string" && !/^https?:\/\//i.test(path)))];
+}
+
+async function removeUserProductImages(
+  serviceClient: NonNullable<ReturnType<typeof getServiceClient>>,
+  imagePaths: string[],
+) {
+  for (let index = 0; index < imagePaths.length; index += 100) {
+    const { error } = await serviceClient.storage
+      .from("product-images")
+      .remove(imagePaths.slice(index, index + 100));
+    if (error) console.error("Failed to remove deleted user product images", error);
+  }
+}
+
 async function recordUserAudit(
   serviceClient: NonNullable<ReturnType<typeof getServiceClient>>,
   adminId: string,
-  action: "create" | "role" | "ban" | "unban" | "reset_password",
+  action: "create" | "role" | "ban" | "unban" | "reset_password" | "delete",
   userId: string,
   details: Record<string, unknown> = {},
 ) {
@@ -144,7 +189,7 @@ export async function POST(request: Request) {
   const passwordError = getPasswordValidationError(password);
   if (passwordError) return jsonError(passwordError, 400);
   if (password !== passwordConfirmation) return jsonError("Konfirmasi password tidak cocok.", 400);
-  if (role !== "toko" && role !== "admin") return jsonError("Role tidak valid.", 400);
+  if (role !== "toko" && role !== "admin" && role !== "anggota") return jsonError("Role tidak valid.", 400);
 
   const { data, error } = await serviceClient.auth.admin.createUser({
     email,
@@ -189,7 +234,7 @@ export async function PATCH(request: Request) {
   }
 
   if (action === "role") {
-    if (body.role !== "toko" && body.role !== "admin") return jsonError("Role tidak valid.", 400);
+    if (body.role !== "toko" && body.role !== "admin" && body.role !== "anggota") return jsonError("Role tidak valid.", 400);
     const { error } = await serviceClient.from("profiles").upsert({ id: userId, role: body.role }, { onConflict: "id" });
     if (error) return jsonError("Role user gagal diperbarui.", 500);
     await recordUserAudit(serviceClient, admin.userId, "role", userId, { role: body.role });
@@ -216,4 +261,52 @@ export async function PATCH(request: Request) {
   }
 
   return jsonError("Aksi tidak didukung.", 400);
+}
+
+export async function DELETE(request: Request) {
+  const admin = await requireAdmin();
+  if (!admin) return jsonError("Akses admin diperlukan.", 403);
+
+  const serviceClient = getServiceClient();
+  if (!serviceClient) return jsonError("SUPABASE_SERVICE_ROLE_KEY belum dikonfigurasi di server.", 503);
+
+  let body: { user_id?: string };
+  try {
+    body = await request.json();
+  } catch {
+    return jsonError("Format request tidak valid.", 400);
+  }
+
+  const userId = body.user_id?.trim();
+  if (!userId) return jsonError("User wajib dipilih.", 400);
+  if (userId === admin.userId) return jsonError("Akun admin yang sedang digunakan tidak dapat dihapus.", 400);
+
+  try {
+    const { data: userData, error: userError } = await serviceClient.auth.admin.getUserById(userId);
+    if (userError || !userData.user) return jsonError("User tidak ditemukan.", 404);
+
+    let imagePaths: string[] = [];
+    try {
+      imagePaths = await getUserProductImagePaths(serviceClient, userId);
+    } catch (error) {
+      console.error("Failed to collect user product images before deletion", error);
+    }
+
+    const { error: deleteError } = await serviceClient.auth.admin.deleteUser(userId);
+    if (deleteError) {
+      console.error("Failed to delete admin-managed user", deleteError);
+      return jsonError("Akun gagal dihapus. Pastikan akun tersebut bukan akun admin yang masih memiliki riwayat audit.", 400);
+    }
+
+    await removeUserProductImages(serviceClient, imagePaths);
+    await recordUserAudit(serviceClient, admin.userId, "delete", userId, {
+      email: userData.user.email ?? "",
+    });
+    revalidatePublicCatalogCache();
+
+    return NextResponse.json({ ok: true });
+  } catch (error) {
+    console.error("Failed to delete admin-managed user", error);
+    return jsonError("Akun gagal dihapus.", 500);
+  }
 }
