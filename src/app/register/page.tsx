@@ -11,7 +11,7 @@ export default function RegisterPage() {
         </Link>
         <h1 className="mt-10 text-2xl font-extrabold tracking-tight text-gray-900">Pendaftaran Pengelola</h1>
         <p className="mt-3 text-sm leading-6 text-gray-600">
-          Pendaftaran anggota dilakukan melalui pengelola UMKM Wania Tangguh.
+          Pendaftaran anggota dilakukan melalui pengelola UMKM Wanita Tangguh.
         </p>
         <div className="mt-8 flex flex-col gap-3 sm:flex-row sm:justify-center">
           <Link href="/login" className="rounded-xl bg-[#0F2C23] px-5 py-3 text-sm font-bold text-white transition-colors hover:bg-[#184537]">

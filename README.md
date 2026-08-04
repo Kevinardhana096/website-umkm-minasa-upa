@@ -18,6 +18,12 @@ bun dev
 
 Open [http://localhost:3000](http://localhost:3000) with your browser to see the result.
 
+Route utama:
+
+- `/` dan `/profil` menampilkan profil kelompok serta produk unggulan.
+- `/katalog` menampilkan katalog publik single page dan modal detail produk.
+- `/dashboard` digunakan role `toko`; role `admin` diarahkan ke `/admin`, sedangkan role `anggota` diarahkan ke `/katalog`.
+
 You can start editing the page by modifying `src/app/page.tsx`. The page auto-updates as you edit the file.
 
 ## Supabase setup
@@ -27,7 +33,7 @@ You can start editing the page by modifying `src/app/page.tsx`. The page auto-up
 3. Isi `NEXT_PUBLIC_SUPABASE_URL` dan `NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY` dari Project Settings → API.
 4. Jalankan isi `supabase/schema.sql` di Supabase SQL Editor.
 5. Jalankan isi `supabase/admin-dashboard.sql` setelah akun admin tersedia agar admin dapat membaca seluruh toko dan produk.
-6. Jalankan isi `supabase/role-hardening.sql` agar hanya role `toko` yang dapat membuat atau mengubah data toko dan produknya.
+6. Jalankan isi `supabase/role-hardening.sql` agar role `toko` memiliki policy write yang ketat untuk toko/produk miliknya; role `anggota` diaktifkan dan diberi policy tambahan pada langkah `member-products.sql`.
 7. Jalankan isi `supabase/product-gallery.sql` untuk mengaktifkan galeri multi-gambar dan melakukan backfill gambar lama.
 8. Jalankan isi `supabase/atomic-product-write.sql` agar produk dan galeri disimpan dalam satu transaksi database.
 9. Jalankan isi `supabase/admin-audit.sql` untuk menyimpan jejak perubahan katalog dan user oleh admin.
@@ -46,7 +52,9 @@ Jangan memasukkan secret/service-role key ke variabel `NEXT_PUBLIC_*` atau ke ko
 
 ## Chat katalog
 
-Chat katalog menggunakan endpoint server `/api/chat`. Pertanyaan tentang harga, ketersediaan, dan kontak dijawab langsung dari data katalog publik. Profil publik Desa Minasa Upa, kelompok UMKM, dan produk diambil dari knowledge terstruktur proyek. Setiap snapshot memiliki ID dokumen, versi, sumber, status verifikasi, dan waktu verifikasi. Snapshot yang belum dilengkapi dokumen resmi diberi status `draft` dan tidak boleh dianggap sebagai data resmi atau real-time. Data pribadi anggota serta rincian operasional internal seperti penjualan, produksi, sertifikasi, dan jangkauan pasar tidak dimasukkan ke knowledge publik; pertanyaan tersebut diarahkan untuk menghubungi pengelola. Pertanyaan yang meminta informasi terbaru memakai Google Search grounding Gemini lalu Mistral `web_search` sebagai fallback. Pertanyaan yang masih berada dalam cakupan website, katalog, desa, atau UMKM dapat diteruskan ke rangkaian provider AI yang kompatibel dengan format OpenAI Chat Completions.
+Status knowledge: snapshot publik saat ini `draft`. Web search hanya menampilkan URL HTTP(S) yang lolos sanitasi dasar; allowlist domain resmi dan workflow persetujuan admin belum tersedia. Satu deskripsi produksi rumahan di knowledge juga masih merupakan klaim publik draft dan bukan data operasional terverifikasi.
+
+Chat katalog menggunakan endpoint server `/api/chat`. Pertanyaan tentang harga, ketersediaan, dan kontak dijawab langsung dari data katalog publik. Profil publik Desa Minasa Upa, kelompok UMKM, dan produk diambil dari knowledge terstruktur proyek. Setiap snapshot memiliki ID dokumen, versi, sumber, status verifikasi, dan waktu verifikasi. Snapshot yang belum dilengkapi dokumen resmi diberi status `draft` dan tidak boleh dianggap sebagai data resmi atau real-time. Data pribadi anggota serta rincian operasional sensitif seperti omzet, sertifikasi, dan jangkauan pasar tidak dimasukkan ke knowledge publik; satu klaim produksi rumahan masih berstatus klaim publik draft. Pertanyaan yang meminta informasi terbaru memakai Google Search grounding Gemini lalu Mistral `web_search` sebagai fallback. Pertanyaan yang masih berada dalam cakupan website, katalog, desa, atau UMKM dapat diteruskan ke rangkaian provider AI yang kompatibel dengan format OpenAI Chat Completions.
 
 Tanpa konfigurasi provider AI, chat tetap berfungsi menggunakan retrieval katalog dan fallback rule-based. Untuk mengaktifkan fallback Gemini → Mistral, tambahkan key dan model provider yang diperlukan ke `.env.local` atau Environment Variables Vercel, lalu restart/deploy aplikasi:
 
@@ -57,6 +65,11 @@ GEMINI_API_KEY=server-only-gemini-key
 GEMINI_MODEL=your-gemini-model
 MISTRAL_API_KEY=server-only-mistral-key
 MISTRAL_MODEL=your-mistral-model
+# Optional additional Chat Completions providers:
+# GROK_API_KEY=server-only-grok-key
+# GROK_MODEL=your-grok-model
+# CEREBRAS_API_KEY=server-only-cerebras-key
+# CEREBRAS_MODEL=your-cerebras-model
 # Opsional: fallback web search native Mistral
 MISTRAL_CONVERSATIONS_API_URL=https://api.mistral.ai/v1/conversations
 # MISTRAL_WEB_SEARCH_MODEL=your-mistral-web-search-model
