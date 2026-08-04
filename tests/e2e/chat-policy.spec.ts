@@ -1,5 +1,5 @@
 import { expect, test, type APIRequestContext } from "@playwright/test";
-import { buildPublicKnowledgeReply } from "../../src/lib/knowledge";
+import { buildPublicKnowledgeReply, getPublicKnowledgeContext, getPublicKnowledgeMetadata } from "../../src/lib/knowledge";
 import { buildWebsiteHelpReply } from "../../src/lib/site-knowledge";
 
 async function ask(request: APIRequestContext, message: string, extra: Record<string, unknown> = {}) {
@@ -24,6 +24,44 @@ test.describe("chat policy", () => {
     const response = buildPublicKnowledgeReply("Bagaimana kondisi UMKM Minasa Upa hari ini?");
 
     expect(response).toBeNull();
+  });
+
+  test("knowledge memiliki provenance dan status verifikasi yang eksplisit", () => {
+    const metadata = getPublicKnowledgeMetadata();
+    const response = buildPublicKnowledgeReply("Di mana letak Desa Minasa Upa?");
+
+    expect(metadata.documentId).toBe("minasa-upa-umkm-profile");
+    expect(metadata.version).toBeTruthy();
+    expect(metadata.status).toBe("draft");
+    expect(metadata.verifiedAt).toBeNull();
+    expect(metadata.sourceLabel).toContain("belum diverifikasi");
+    expect(response?.knowledgeMeta).toEqual(metadata);
+    expect(response?.reply).toContain("snapshot profil proyek");
+  });
+
+  test("detail operasional internal tidak diberikan oleh knowledge publik", () => {
+    for (const message of [
+      "Berapa omzet dan kapasitas produksi Kelompok UMKM Wanita Tangguh?",
+      "Berapa omzet UMKM ini?",
+    ]) {
+      const response = buildPublicKnowledgeReply(message);
+
+      expect(response?.source).toBe("knowledge");
+      expect(response?.reply).toContain("tidak ditampilkan dalam profil publik");
+      expect(response?.reply).not.toContain("Rp");
+      expect(response?.reply).not.toContain("kapasitas produksi");
+    }
+  });
+
+  test("context AI membawa metadata knowledge serta tidak menyebut draft sebagai data resmi", () => {
+    const context = getPublicKnowledgeContext();
+
+    expect(context).toContain("<knowledge_provenance>");
+    expect(context).toContain("status: draft");
+    expect(context).toContain("terverifikasi: belum");
+    expect(context).toContain("jangan menyebutnya sebagai data resmi atau real-time");
+    expect(context).toContain("tidak termasuk dalam knowledge publik");
+    expect(context).toContain("[village-location-and-potential]");
   });
 
   test("widget menampilkan hanya sumber web dengan URL aman", async ({ page }) => {

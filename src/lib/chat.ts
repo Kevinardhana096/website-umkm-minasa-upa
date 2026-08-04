@@ -8,6 +8,7 @@ import {
   isObviousOffTopicRequest,
   isConversationFollowUp,
 } from "@/lib/chat-policy";
+import type { KnowledgeProvenance } from "@/lib/knowledge-types";
 
 export interface ChatProductContext {
   id: string;
@@ -34,6 +35,7 @@ export interface ChatSource {
 export interface ChatReply {
   reply: string;
   sources?: ChatSource[];
+  knowledgeMeta?: KnowledgeProvenance;
   whatsappNumber?: string;
   whatsappMessage?: string;
   source: "catalog" | "knowledge" | "website" | "ai" | "web" | "fallback" | "scope";
