@@ -1,6 +1,8 @@
 import { NextResponse } from "next/server";
 import { getPublicCatalog } from "@/lib/catalog";
-import { buildPublicKnowledgeReply, getPublicKnowledgeContext } from "@/lib/knowledge";
+import { getCachedWebReply, saveWebReplyToCache } from "@/lib/chat-cache";
+import { parseChatIntent, type ChatIntentResult, type ChatIntentRoute } from "@/lib/chat-intent";
+import { buildPublicKnowledgeReply, getPublicKnowledgeContext, type PublicKnowledgeIntent } from "@/lib/knowledge";
 import {
   buildDirectChatReply,
   buildFallbackChatReply,
@@ -14,6 +16,7 @@ import {
 import type { Product } from "@/types/product";
 
 export const dynamic = "force-dynamic";
+export const runtime = "nodejs";
 
 const MAX_MESSAGE_LENGTH = 800;
 const RATE_LIMIT_WINDOW_MS = 60_000;
@@ -440,6 +443,89 @@ function getProviderConfigs(): ChatProviderConfig[] {
     .filter((provider) => Boolean(provider.apiKey && provider.model));
 }
 
+const INTENT_ROUTING_PROMPT = `Anda adalah router intent untuk Asisten UMKM berbahasa Indonesia. Anda tidak perlu menjawab pertanyaan; cukup klasifikasikan maksudnya.
+
+Pilih tepat satu route:
+- knowledge_village: pertanyaan statis tentang Desa Minasa Upa, termasuk lokasi, letak, alamat, wilayah, penduduk, dusun, dan potensi yang dapat dijawab dari knowledge proyek.
+- knowledge_group: profil statis Kelompok UMKM Wanita Tangguh, anggota, tahun berdiri, dan produk yang disebut dalam knowledge proyek.
+- knowledge_business: kondisi, kendala, pemasaran, branding, kemasan, konten, pembukuan, atau digitalisasi kelompok berdasarkan knowledge proyek.
+- web: pertanyaan terbaru, terkini, berita, hari ini, verifikasi fakta, atau pengetahuan umum di luar knowledge proyek yang memerlukan sumber web.
+- catalog_ai: pertanyaan tentang penjelasan, perbandingan, atau rekomendasi produk/toko berdasarkan katalog, bukan web.
+
+Penting:
+- Pertanyaan seperti "di mana letak Desa Minasa Upa?" adalah knowledge_village, bukan web.
+- Pertanyaan seperti "berita terbaru Desa Minasa Upa?" adalah web.
+- Harga, stok, dan kontak sudah diproses oleh aturan katalog sebelum router ini.
+- Kembalikan HANYA JSON dengan format {"route":"...","confidence":0.0}. Confidence harus angka antara 0 dan 1.`;
+
+function getPublicKnowledgeIntent(route: ChatIntentRoute): PublicKnowledgeIntent | undefined {
+  if (route === "knowledge_village") return "village";
+  if (route === "knowledge_group") return "group";
+  if (route === "knowledge_business") return "business";
+  return undefined;
+}
+
+async function requestIntentProvider(
+  provider: ChatProviderConfig,
+  message: string,
+): Promise<ChatIntentResult | null> {
+  if (!provider.apiKey || !provider.model) return null;
+
+  const controller = new AbortController();
+  const timeout = setTimeout(() => controller.abort(), 4_000);
+  const requestBody: Record<string, unknown> = {
+    model: provider.model,
+    temperature: 0,
+    messages: [
+      { role: "system", content: INTENT_ROUTING_PROMPT },
+      { role: "user", content: `<user_question>\n${message}\n</user_question>` },
+    ],
+  };
+
+  if (provider.name === "cerebras") {
+    requestBody.max_completion_tokens = 120;
+  } else {
+    requestBody.max_tokens = 120;
+  }
+
+  try {
+    const response = await fetch(provider.apiUrl, {
+      method: "POST",
+      headers: {
+        Authorization: `Bearer ${provider.apiKey}`,
+        "Content-Type": "application/json",
+      },
+      body: JSON.stringify(requestBody),
+      signal: controller.signal,
+    });
+
+    if (!response.ok) {
+      console.warn(`Intent router ${provider.name} mengembalikan status`, response.status);
+      return null;
+    }
+
+    const payload = await response.json().catch(() => null);
+    const reply = getMessageContent(payload);
+    return reply ? parseChatIntent(reply) : null;
+  } catch (error) {
+    console.warn(`Intent router ${provider.name} tidak dapat dihubungi`, error instanceof Error ? error.message : error);
+    return null;
+  } finally {
+    clearTimeout(timeout);
+  }
+}
+
+async function requestChatIntent(message: string): Promise<ChatIntentResult | null> {
+  if (process.env.AI_CHAT_INTENT_ROUTING_ENABLED?.trim().toLowerCase() === "false") return null;
+
+  for (const provider of getProviderConfigs()) {
+    const result = await requestIntentProvider(provider, message);
+    if (result) return result;
+  }
+
+  return null;
+}
+
 async function requestProviderReply(
   provider: ChatProviderConfig,
   message: string,
@@ -545,10 +631,33 @@ export async function POST(request: Request) {
   const knowledgeReply = !relevantProduct ? buildPublicKnowledgeReply(message) : null;
   if (knowledgeReply) return NextResponse.json(knowledgeReply);
 
-  const webSearchRequested = shouldUseWebSearch(message, relevantProduct);
+  const chatIntent = !relevantProduct ? await requestChatIntent(message) : null;
+  const publicKnowledgeIntent = chatIntent ? getPublicKnowledgeIntent(chatIntent.route) : undefined;
+  const intentKnowledgeReply = publicKnowledgeIntent
+    ? buildPublicKnowledgeReply(message, publicKnowledgeIntent)
+    : null;
+  if (intentKnowledgeReply) return NextResponse.json(intentKnowledgeReply);
+
+  const webSearchRequested = chatIntent
+    ? chatIntent.route === "web"
+    : shouldUseWebSearch(message, relevantProduct);
 
   const webSearchEnabled = process.env.AI_CHAT_WEB_SEARCH_ENABLED?.trim().toLowerCase() !== "false";
   if (webSearchRequested && webSearchEnabled) {
+    const cachedWebReply = await getCachedWebReply(message, store?.name);
+    if (cachedWebReply) {
+      return NextResponse.json({
+        reply: cachedWebReply.reply,
+        sources: cachedWebReply.sources,
+        whatsappNumber: store?.whatsappNumber?.trim() || undefined,
+        whatsappMessage: `Halo ${store?.name ?? "penjual"}, saya ingin bertanya tentang informasi toko Anda.`,
+        source: "web",
+        provider: cachedWebReply.provider,
+        cached: true,
+        cachedAt: cachedWebReply.fetchedAt,
+      });
+    }
+
     let webReply = await requestGeminiWebSearchReply(message, store);
     let webProvider = "gemini-google-search";
     if (!webReply) {
@@ -557,6 +666,13 @@ export async function POST(request: Request) {
     }
 
     if (webReply) {
+      await saveWebReplyToCache(message, store?.name, {
+        reply: webReply.reply,
+        sources: webReply.sources,
+        provider: webProvider,
+        fetchedAt: new Date().toISOString(),
+      });
+
       return NextResponse.json({
         reply: webReply.reply,
         sources: webReply.sources,

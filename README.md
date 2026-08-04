@@ -31,6 +31,7 @@ You can start editing the page by modifying `src/app/page.tsx`. The page auto-up
 7. Jalankan isi `supabase/product-gallery.sql` untuk mengaktifkan galeri multi-gambar dan melakukan backfill gambar lama.
 8. Jalankan isi `supabase/atomic-product-write.sql` agar produk dan galeri disimpan dalam satu transaksi database.
 9. Jalankan isi `supabase/admin-audit.sql` untuk menyimpan jejak perubahan katalog dan user oleh admin.
+Opsional, jalankan isi `supabase/chat-answer-cache.sql` jika ingin menyimpan jawaban web chat secara persisten di Supabase.
 10. Untuk project yang sudah ada, jalankan `supabase/storage-hardening.sql` agar bucket membatasi file maksimal 5 MB dan hanya menerima JPG, PNG, atau WebP.
 11. Aktifkan Email provider pada Authentication → Providers untuk login email/password.
 12. Pada Authentication → Providers → Email, nonaktifkan **Allow new users to sign up** dan **Confirm Email**. Akun toko hanya dibuat oleh pengelola melalui proses internal dan dapat login tanpa verifikasi email.
@@ -60,6 +61,10 @@ MISTRAL_CONVERSATIONS_API_URL=https://api.mistral.ai/v1/conversations
 ```
 
 Konfigurasi lama `AI_CHAT_API_URL`, `AI_CHAT_API_KEY`, dan `AI_CHAT_MODEL` tetap diterima sebagai konfigurasi Gemini utama. Semua API key tidak boleh menggunakan awalan `NEXT_PUBLIC_` dan tidak pernah dikirim ke browser. Knowledge profil dipakai untuk pertanyaan statis; angka profil diberi konteks sebagai snapshot dokumen dan bukan data real-time. Pertanyaan terbaru memakai native Gemini `generateContent` dengan `google_search`; jika gagal, sistem mencoba Mistral Conversations API dengan `web_search`. Keduanya memiliki timeout 12 detik dan mengembalikan maksimal 5 sumber. Endpoint membatasi pertanyaan maksimal 800 karakter, sekitar 20 request per alamat IP per menit, dan waktu tunggu provider 8 detik.
+
+Jawaban web yang berhasil dapat disimpan di `chat_answer_cache` selama TTL `AI_CHAT_WEB_CACHE_TTL_SECONDS` (default 6 jam), sehingga pertanyaan yang sama tidak perlu memanggil web lagi sampai cache kedaluwarsa. Cache hanya aktif jika migration cache sudah dijalankan dan `SUPABASE_SERVICE_ROLE_KEY` tersedia di server.
+
+Jika provider chat tersedia, router intent semantik membantu mengenali variasi kalimat seperti "di mana letak Desa Minasa Upa?" sebagai pertanyaan knowledge lokasi tanpa bergantung pada kecocokan kata. Jika router gagal, pola intent lokal tetap menjadi fallback. Router dapat dinonaktifkan dengan `AI_CHAT_INTENT_ROUTING_ENABLED=false`.
 
 > Penting: halaman `/register` hanya menutup pendaftaran dari sisi aplikasi. Menonaktifkan public sign-up di pengaturan Supabase tetap wajib agar endpoint Auth tidak dapat digunakan untuk membuat akun publik.
 
@@ -107,7 +112,7 @@ Repository ini siap dideploy dari branch `main` tanpa file konfigurasi Vercel ta
    ```env
    NEXT_PUBLIC_SUPABASE_URL=https://your-project.supabase.co
    NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY=your-publishable-key
-   # Hanya jika menu Manajemen user admin digunakan:
+   # Diperlukan untuk cache chat web dan mutation admin; selalu server-only:
    SUPABASE_SERVICE_ROLE_KEY=your-service-role-key
    # Opsional untuk mengaktifkan AI chat dan fallback provider:
    AI_CHAT_PROVIDER_ORDER=gemini,mistral
@@ -119,6 +124,10 @@ Repository ini siap dideploy dari branch `main` tanpa file konfigurasi Vercel ta
    MISTRAL_CONVERSATIONS_API_URL=https://api.mistral.ai/v1/conversations
    # Opsional bila model chat berbeda dengan model web search:
    # MISTRAL_WEB_SEARCH_MODEL=your-mistral-web-search-model
+   # Opsional, default 6 jam:
+   # AI_CHAT_WEB_CACHE_TTL_SECONDS=21600
+   # Opsional, default aktif jika provider chat tersedia:
+   # AI_CHAT_INTENT_ROUTING_ENABLED=true
    ```
 
 5. Klik **Deploy**. Vercel akan menjalankan `npm run build` secara otomatis.

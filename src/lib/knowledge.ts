@@ -3,6 +3,8 @@ export interface PublicKnowledgeReply {
   source: "knowledge";
 }
 
+export type PublicKnowledgeIntent = "village" | "group" | "business";
+
 const KNOWLEDGE_SOURCE_NOTE = "Menurut ringkasan profil proposal program yang digunakan sebagai sumber knowledge proyek";
 
 const VILLAGE_PROFILE = [
@@ -28,7 +30,7 @@ function hasLatestIntent(message: string) {
 
 function asksAboutVillage(message: string) {
   return /desa\s+minasa\s+upa|minasa\s+upa/i.test(message)
-    && /apa\s+itu|profil|tentang|jelaskan|lokasi|wilayah|penduduk|dusun|potensi|kondisi/i.test(message);
+    && /apa\s+itu|profil|tentang|jelaskan|lokasi|di\s+mana|dimana|letak|terletak|berada|alamat|wilayah|penduduk|dusun|potensi|kondisi/i.test(message);
 }
 
 function asksAboutGroup(message: string) {
@@ -41,12 +43,15 @@ function asksAboutBusinessContext(message: string) {
     && /masalah|kendala|tantangan|kondisi|pemasaran|branding|kemasan|konten|pembukuan|digital/i.test(message);
 }
 
-export function buildPublicKnowledgeReply(message: string): PublicKnowledgeReply | null {
+export function buildPublicKnowledgeReply(
+  message: string,
+  intent?: PublicKnowledgeIntent,
+): PublicKnowledgeReply | null {
   if (hasLatestIntent(message)) return null;
 
-  const village = asksAboutVillage(message);
-  const group = asksAboutGroup(message);
-  const business = asksAboutBusinessContext(message);
+  const village = intent === "village" || asksAboutVillage(message);
+  const group = intent === "group" || asksAboutGroup(message);
+  const business = intent === "business" || asksAboutBusinessContext(message);
   if (!village && !group && !business) return null;
 
   const sections: string[] = [];

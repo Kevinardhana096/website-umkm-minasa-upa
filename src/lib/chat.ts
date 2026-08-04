@@ -29,6 +29,8 @@ export interface ChatReply {
   source: "catalog" | "knowledge" | "ai" | "web" | "fallback";
   provider?: string;
   sources?: ChatSource[];
+  cached?: boolean;
+  cachedAt?: string;
 }
 
 function normalizeText(value: string) {
