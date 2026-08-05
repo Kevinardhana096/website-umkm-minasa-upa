@@ -5,6 +5,7 @@ import { validateWhatsappNumber } from "@/lib/whatsapp";
 import { saveProduct, type NewProductInput } from "@/lib/store-service";
 
 const STORE_SELECT = "id, owner_id, name, name_normalized, seller_name, description, whatsapp_number, is_active";
+export const DEFAULT_MEMBER_STORE_NAME = "UMKM Desa Minasa Upa Maros";
 
 interface MemberSession {
   userId: string;
@@ -66,9 +67,11 @@ export async function getMemberCatalogData(): Promise<MemberCatalogData> {
   };
 }
 
-export async function resolveMemberStore(storeName: string, whatsappNumber: string) {
+export async function resolveMemberStore(storeName: string, whatsappNumber: string, allowLegacyStore = false) {
   const session = await requireMemberSession();
-  const name = storeName.trim();
+  // Anggota menggunakan identitas katalog bersama. Nilai dari client sengaja
+  // diabaikan agar nama ini tidak dapat diubah melalui request langsung.
+  const name = allowLegacyStore ? storeName.trim() : DEFAULT_MEMBER_STORE_NAME;
   if (name.length < 2) throw new Error("Nama toko minimal 2 karakter.");
   const normalizedName = normalizeStoreName(name);
   const normalizedWhatsapp = validateWhatsappNumber(whatsappNumber);
@@ -88,7 +91,9 @@ export async function resolveMemberStore(storeName: string, whatsappNumber: stri
     .maybeSingle<StoreRow>();
   if (ownStoreError) throw ownStoreError;
   if (ownStore) {
-    throw new Error(`Toko baru tidak dapat dibuat karena akun ini sudah memiliki toko "${ownStore.name}". Pilih toko tersebut atau hubungi admin.`);
+    // Pertahankan kompatibilitas dengan data anggota lama yang sudah memiliki
+    // toko sendiri. Anggota baru tetap akan memakai toko default bersama.
+    return ownStore;
   }
 
   const { data: createdStore, error: createError } = await supabase
@@ -115,9 +120,9 @@ export async function resolveMemberStore(storeName: string, whatsappNumber: stri
 
 export async function saveMemberProduct(input: NewProductInput) {
   if (!input.storeName) throw new Error("Nama toko wajib diisi.");
-  const store = await resolveMemberStore(input.storeName, input.whatsappNumber);
   const session = await requireMemberSession();
   const supabase = createClient();
+  let legacyStoreName: string | undefined;
 
   if (input.id) {
     const { data: existingProduct, error } = await supabase
@@ -128,7 +133,30 @@ export async function saveMemberProduct(input: NewProductInput) {
       .maybeSingle<{ id: string; store_id: string }>();
     if (error) throw error;
     if (!existingProduct) throw new Error("Produk tidak ditemukan atau bukan milik akun ini.");
-    if (existingProduct.store_id !== store.id) throw new Error("Toko produk tidak dapat diubah.");
+    const { data: existingStore, error: existingStoreError } = await supabase
+      .from("stores")
+      .select("name")
+      .eq("id", existingProduct.store_id)
+      .maybeSingle<{ name: string }>();
+    if (existingStoreError) throw existingStoreError;
+    legacyStoreName = existingStore?.name;
+  }
+
+  const store = await resolveMemberStore(
+    legacyStoreName ?? input.storeName,
+    input.whatsappNumber,
+    Boolean(legacyStoreName),
+  );
+
+  if (input.id) {
+    const { data: existingProduct, error } = await supabase
+      .from("products")
+      .select("id, store_id")
+      .eq("id", input.id)
+      .eq("created_by", session.userId)
+      .maybeSingle<{ id: string; store_id: string }>();
+    if (error) throw error;
+    if (!existingProduct || existingProduct.store_id !== store.id) throw new Error("Toko produk tidak dapat diubah.");
   }
 
   const product = await saveProduct(store.id, input);

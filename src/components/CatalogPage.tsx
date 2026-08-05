@@ -11,7 +11,7 @@ import { FloatingChatWidget, FloatingChatWidgetRef } from './FloatingChatWidget'
 import { mockProducts } from '@/data/mockProducts';
 import type { CatalogStore, CatalogStoreOption, ProductRow } from '@/lib/products';
 import { deleteProduct, revalidatePublicCatalog, type NewProductInput } from '@/lib/store-service';
-import { getMemberCatalogData, mapMemberProduct, saveMemberProduct } from '@/lib/member-service';
+import { DEFAULT_MEMBER_STORE_NAME, getMemberCatalogData, mapMemberProduct, saveMemberProduct } from '@/lib/member-service';
 import { Product } from '@/types/product';
 
 const ProductFormModal = dynamic(() =>
@@ -247,9 +247,9 @@ export const CatalogPage: React.FC<CatalogPageProps> = ({
           isOpen={isMemberFormOpen}
           isSaving={isMemberSaving}
           showStoreName
-          storeNameLocked={Boolean(editingMemberProduct)}
-          defaultStoreName={editingMemberProduct?.store_name ?? ''}
-          storeOptions={memberStores}
+          storeNameLocked
+          defaultStoreName={editingMemberProduct?.store_name ?? DEFAULT_MEMBER_STORE_NAME}
+          storeOptions={[]}
           onClose={() => { setIsMemberFormOpen(false); setEditingMemberProduct(null); }}
           onSave={handleMemberSave}
         />
