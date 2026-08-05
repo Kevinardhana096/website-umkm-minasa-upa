@@ -5,11 +5,7 @@ import { createClient } from '@/lib/supabase/server';
 
 export const revalidate = 60;
 
-export default async function Katalog() {
-  const catalog = await getPublicCatalog();
-  let viewerRole: 'toko' | 'admin' | 'anggota' | undefined;
-  let viewerUserId: string | undefined;
-
+async function getViewer() {
   if (process.env.NEXT_PUBLIC_SUPABASE_URL && process.env.NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY) {
     const supabase = await createClient();
     const { data } = await supabase.auth.getClaims();
@@ -20,18 +16,25 @@ export default async function Katalog() {
         .select('role')
         .eq('id', userId)
         .maybeSingle<{ role: 'toko' | 'admin' | 'anggota' }>();
-      viewerRole = profile?.role;
-      viewerUserId = userId;
+      return { role: profile?.role, userId };
     }
   }
+
+  return { role: undefined, userId: undefined };
+}
+
+export default async function Katalog() {
+  // Catalog and session data are independent, so start both network requests
+  // together instead of serializing them on every navigation.
+  const [catalog, viewer] = await Promise.all([getPublicCatalog(), getViewer()]);
 
   return (
     <CatalogPage
       initialProducts={catalog?.products ?? (catalog === null ? mockProducts : [])}
       store={catalog?.store ?? null}
       storeOptions={catalog?.stores ?? []}
-      viewerRole={viewerRole}
-      viewerUserId={viewerUserId}
+      viewerRole={viewer.role}
+      viewerUserId={viewer.userId}
     />
   );
 }

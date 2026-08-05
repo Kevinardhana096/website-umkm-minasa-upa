@@ -32,7 +32,7 @@ export interface NewProductInput {
 }
 
 export interface StoreData {
-  user: User;
+  user: Pick<User, "id">;
   store: StoreRow | null;
   products: ProductRow[];
 }

@@ -58,7 +58,6 @@ export function AdminDashboardClient({ initialData }: AdminDashboardClientProps)
       return;
     }
     router.replace("/login");
-    router.refresh();
   };
 
   const handleSaveStore = async (input: StoreProfileInput) => {

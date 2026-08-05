@@ -3,8 +3,9 @@
 import { useRouter } from "next/navigation";
 import { StoreDashboard } from "@/components/StoreDashboard";
 import { createClient } from "@/lib/supabase/client";
+import type { StoreData } from "@/lib/store-service";
 
-export function DashboardClient() {
+export function DashboardClient({ initialData }: { initialData: StoreData }) {
   const router = useRouter();
 
   const handleSignOut = async () => {
@@ -13,8 +14,7 @@ export function DashboardClient() {
     if (error) throw error;
 
     router.replace("/login");
-    router.refresh();
   };
 
-  return <StoreDashboard onBackToCatalog={() => router.push("/")} onSignOut={handleSignOut} />;
+  return <StoreDashboard initialData={initialData} onBackToCatalog={() => router.push("/")} onSignOut={handleSignOut} />;
 }

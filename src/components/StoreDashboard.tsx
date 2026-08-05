@@ -1,25 +1,30 @@
 "use client";
 
 import { useEffect, useState } from "react";
+import dynamic from "next/dynamic";
 import Image from "next/image";
 import { ArrowLeft, CheckCircle2, Eye, LogOut, Package } from "lucide-react";
 import { DashboardSidebar, type DashboardTab } from "@/components/dashboard/DashboardSidebar";
-import { ProductFormModal } from "@/components/dashboard/ProductFormModal";
 import { ProductTable } from "@/components/dashboard/ProductTable";
 import { createCurrentStore, deleteProduct, getCurrentStoreData, isStoreProfileComplete, revalidatePublicCatalog, saveProduct, updateCurrentStore, type NewProductInput, type StoreData, type StoreProfileInput } from "@/lib/store-service";
 import type { ProductRow } from "@/lib/products";
 import { InstitutionalLogos } from "@/components/InstitutionalLogos";
 import { StoreProfileForm } from "@/components/dashboard/StoreProfileForm";
 
+const ProductFormModal = dynamic(() =>
+  import("@/components/dashboard/ProductFormModal").then((module) => module.ProductFormModal),
+);
+
 interface StoreDashboardProps {
+  initialData?: StoreData;
   onBackToCatalog?: () => void;
   onSignOut: () => Promise<void>;
 }
 
-export function StoreDashboard({ onBackToCatalog, onSignOut }: StoreDashboardProps) {
+export function StoreDashboard({ initialData, onBackToCatalog, onSignOut }: StoreDashboardProps) {
   const [activeTab, setActiveTab] = useState<DashboardTab>("produk");
-  const [storeData, setStoreData] = useState<StoreData | null>(null);
-  const [isLoading, setIsLoading] = useState(true);
+  const [storeData, setStoreData] = useState<StoreData | null>(initialData ?? null);
+  const [isLoading, setIsLoading] = useState(!initialData);
   const [isSaving, setIsSaving] = useState(false);
   const [isSavingStore, setIsSavingStore] = useState(false);
   const [isSigningOut, setIsSigningOut] = useState(false);
@@ -40,6 +45,8 @@ export function StoreDashboard({ onBackToCatalog, onSignOut }: StoreDashboardPro
   };
 
   useEffect(() => {
+    if (initialData) return;
+
     let cancelled = false;
 
     const fetchStore = async () => {
@@ -57,7 +64,7 @@ export function StoreDashboard({ onBackToCatalog, onSignOut }: StoreDashboardPro
     return () => {
       cancelled = true;
     };
-  }, []);
+  }, [initialData]);
 
   const handleSaveProduct = async (input: NewProductInput) => {
     if (!storeData?.store) return;

@@ -1,18 +1,22 @@
 'use client';
 
 import React, { useState, useMemo, useRef, useEffect } from 'react';
+import dynamic from 'next/dynamic';
 import { Navbar } from './Navbar';
 import { HeroSection } from './HeroSection';
 import { ProductGrid } from './ProductGrid';
 import { ProductDetailModal } from './ProductDetailModal';
 import { Footer } from './Footer';
 import { FloatingChatWidget, FloatingChatWidgetRef } from './FloatingChatWidget';
-import { ProductFormModal } from './dashboard/ProductFormModal';
 import { mockProducts } from '@/data/mockProducts';
 import type { CatalogStore, CatalogStoreOption, ProductRow } from '@/lib/products';
 import { deleteProduct, revalidatePublicCatalog, type NewProductInput } from '@/lib/store-service';
 import { getMemberCatalogData, mapMemberProduct, saveMemberProduct } from '@/lib/member-service';
 import { Product } from '@/types/product';
+
+const ProductFormModal = dynamic(() =>
+  import('./dashboard/ProductFormModal').then((module) => module.ProductFormModal),
+);
 
 interface CatalogPageProps {
   initialProducts?: Product[];

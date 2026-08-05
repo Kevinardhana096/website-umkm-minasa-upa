@@ -31,8 +31,12 @@ export const Navbar: React.FC<NavbarProps> = ({
     let cancelled = false;
 
     const loadDashboardDestination = async () => {
-      const { data: userData } = await supabase.auth.getUser();
-      if (!userData.user) {
+      // The navbar only needs a navigation hint. Reading the cookie-backed
+      // session avoids an extra Auth server roundtrip; protected pages still
+      // perform their own authoritative authorization checks.
+      const { data: sessionData } = await supabase.auth.getSession();
+      const user = sessionData.session?.user;
+      if (!user) {
         if (!cancelled) {
           setDashboardHref(null);
           setDashboardLabel('Login Pengelola');
@@ -43,7 +47,7 @@ export const Navbar: React.FC<NavbarProps> = ({
       const { data: profile } = await supabase
         .from('profiles')
         .select('role')
-        .eq('id', userData.user.id)
+        .eq('id', user.id)
         .maybeSingle<{ role: 'toko' | 'admin' | 'anggota' }>();
       if (cancelled) return;
 
@@ -101,7 +105,6 @@ export const Navbar: React.FC<NavbarProps> = ({
       setDashboardLabel('Login Pengelola');
       setMobileMenuOpen(false);
       router.replace('/login');
-      router.refresh();
     } finally {
       setIsSigningOut(false);
     }
@@ -201,7 +204,7 @@ export const Navbar: React.FC<NavbarProps> = ({
 
             {/* Right Action Buttons */}
             <div className="hidden md:flex items-center space-x-2">
-              <a
+              <Link
                 href={dashboardHref ?? '/login'}
                 className={`rounded-lg px-3 py-1.5 text-xs font-semibold transition-all sm:text-sm ${
                   isTransparentAtTop
@@ -210,7 +213,7 @@ export const Navbar: React.FC<NavbarProps> = ({
                 }`}
               >
                 {dashboardLabel}
-              </a>
+              </Link>
               {dashboardHref && (
                 <button
                   type="button"
@@ -288,13 +291,13 @@ export const Navbar: React.FC<NavbarProps> = ({
               <span>Katalog Produk</span>
             </Link>
 
-            <a
+            <Link
               href={dashboardHref ?? '/login'}
               onClick={() => setMobileMenuOpen(false)}
               className="flex items-center justify-center py-2.5 rounded-lg border border-gray-200 text-sm font-semibold text-gray-700 hover:bg-gray-50 mt-1"
             >
               {dashboardLabel}
-            </a>
+            </Link>
             {dashboardHref && (
               <button
                 type="button"

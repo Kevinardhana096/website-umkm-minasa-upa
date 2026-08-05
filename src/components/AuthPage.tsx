@@ -31,8 +31,7 @@ export function AuthPage({ onNavigateHome, onSuccessAuth }: AuthPageProps) {
 
   const finishAuth = (destination: "admin" | "dashboard" | "katalog" = "dashboard") => {
     if (onSuccessAuth) return onSuccessAuth();
-    router.push(destination === "admin" ? "/admin" : destination === "katalog" ? "/katalog" : "/dashboard");
-    router.refresh();
+    router.replace(destination === "admin" ? "/admin" : destination === "katalog" ? "/katalog" : "/dashboard");
   };
 
   const handleLogin = async (event: React.FormEvent<HTMLFormElement>) => {
