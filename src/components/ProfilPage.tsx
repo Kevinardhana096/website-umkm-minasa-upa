@@ -259,35 +259,41 @@ export const ProfilPage: React.FC<ProfilPageProps> = ({ store = null, products =
 
           {/* Product Grid */}
           {featuredProducts.length > 0 ? (
-            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6">
+            <div className="flex overflow-x-auto snap-x snap-mandatory pb-4 gap-3 sm:gap-6 sm:grid sm:grid-cols-2 lg:grid-cols-4 sm:overflow-visible scrollbar-none">
               {featuredProducts.map((product) => (
               <div 
                 key={product.id}
                 onClick={() => setSelectedProduct(product)}
-                className="bg-white rounded-2xl overflow-hidden border border-gray-200/80 shadow-2xs hover:shadow-md transition-all flex flex-col group cursor-pointer"
+                className="w-[calc(50%-0.375rem)] min-w-[calc(50%-0.375rem)] shrink-0 snap-start sm:w-auto sm:min-w-0 sm:shrink bg-white rounded-2xl overflow-hidden border border-gray-200/80 shadow-2xs hover:shadow-md transition-all flex flex-col group cursor-pointer"
               >
-                <div className="relative h-48 w-full overflow-hidden bg-gray-100">
+                <div className="relative h-36 sm:h-48 w-full overflow-hidden bg-gray-100">
                   <Image
                     src={product.imageUrl || '/food_umkm.jpg'}
                     alt={product.name}
                     fill
                     unoptimized
-                    sizes="(max-width: 640px) 100vw, (max-width: 1024px) 50vw, 25vw"
+                    sizes="(max-width: 640px) 50vw, (max-width: 1024px) 50vw, 25vw"
                     className="object-cover group-hover:scale-105 transition-transform duration-300"
                   />
+                  {product.isVerified && (
+                    <span className="absolute top-2 left-2 sm:top-2.5 sm:left-2.5 px-2 py-0.5 sm:px-2.5 sm:py-1 rounded bg-[#0F2C23]/90 text-white text-[9px] sm:text-[10px] font-bold tracking-wide flex items-center gap-1 shadow-xs">
+                      <CheckCircle2 className="w-2.5 h-2.5 sm:w-3 sm:h-3 text-emerald-400" />
+                      Verified
+                    </span>
+                  )}
                 </div>
 
-                <div className="p-4 flex-1 flex flex-col justify-between">
+                <div className="p-3 sm:p-4 flex-1 flex flex-col justify-between">
                   <div>
-                    <span className="text-[11px] font-semibold text-gray-400">
+                    <span className="text-[10px] sm:text-[11px] font-semibold text-gray-400">
                       {product.merchantName}
                     </span>
-                    <h3 className="text-sm font-bold text-gray-900 mt-1 line-clamp-2 leading-snug">
+                    <h3 className="text-xs sm:text-sm font-bold text-gray-900 mt-0.5 sm:mt-1 line-clamp-2 leading-snug">
                       {product.name}
                     </h3>
                     {product.description && (
-                      <div className="mt-2">
-                        <MarkdownContent content={product.description} className="text-xs text-gray-600 line-clamp-2 leading-relaxed" />
+                      <div className="mt-1.5 sm:mt-2">
+                        <MarkdownContent content={product.description} className="text-[11px] sm:text-xs text-gray-600 line-clamp-2 leading-relaxed" />
                         {product.description.length > 50 && (
                           <button
                             type="button"
@@ -295,7 +301,7 @@ export const ProfilPage: React.FC<ProfilPageProps> = ({ store = null, products =
                               e.stopPropagation();
                               setSelectedProduct(product);
                             }}
-                            className="mt-1 text-[11px] font-semibold text-[#963E1B] hover:text-[#0F2C23] hover:underline inline-flex items-center gap-0.5 transition-colors focus:outline-none"
+                            className="mt-1 text-[10px] sm:text-[11px] font-semibold text-[#963E1B] hover:text-[#0F2C23] hover:underline inline-flex items-center gap-0.5 transition-colors focus:outline-none"
                           >
                             <span>Detail Selengkapnya</span>
                             <ChevronRight className="w-3 h-3" />
@@ -305,8 +311,8 @@ export const ProfilPage: React.FC<ProfilPageProps> = ({ store = null, products =
                     )}
                   </div>
 
-                  <div className="mt-4 pt-3 border-t border-gray-100 flex items-center justify-between">
-                    <span className="text-sm font-extrabold text-gray-900">
+                  <div className="mt-3 sm:mt-4 pt-2.5 sm:pt-3 border-t border-gray-100 flex items-center justify-between">
+                    <span className="text-xs sm:text-sm font-extrabold text-gray-900">
                       {formatRupiah(product.price)}
                     </span>
                     <button
@@ -315,10 +321,10 @@ export const ProfilPage: React.FC<ProfilPageProps> = ({ store = null, products =
                         e.stopPropagation();
                         setSelectedProduct(product);
                       }}
-                      className="p-2 rounded-lg bg-gray-100 text-gray-700 hover:bg-[#0F2C23] hover:text-white transition-colors"
+                      className="p-1.5 sm:p-2 rounded-lg bg-gray-100 text-gray-700 hover:bg-[#0F2C23] hover:text-white transition-colors"
                       title="Lihat Detail Produk"
                     >
-                      <ShoppingBag className="w-4 h-4" />
+                      <ShoppingBag className="w-3.5 h-3.5 sm:w-4 sm:h-4" />
                     </button>
                   </div>
                 </div>
