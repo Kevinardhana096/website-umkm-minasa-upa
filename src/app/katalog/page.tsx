@@ -1,7 +1,9 @@
 import { CatalogPage } from '@/components/CatalogPage';
+import { PublicCatalogAutoRefresh } from '@/components/PublicCatalogAutoRefresh';
 import { getPublicCatalog } from '@/lib/catalog';
 import { mockProducts } from '@/data/mockProducts';
 import { createClient } from '@/lib/supabase/server';
+import type { Product } from '@/types/product';
 
 export const revalidate = 60;
 
@@ -23,19 +25,33 @@ async function getViewer() {
   return { role: undefined, userId: undefined };
 }
 
+function getCatalogProductsKey(products: Product[]) {
+  let hash = 2_166_136_261;
+  const content = JSON.stringify(products);
+  for (let index = 0; index < content.length; index += 1) {
+    hash = Math.imul(hash ^ content.charCodeAt(index), 16_777_619);
+  }
+  return `${products.length}-${(hash >>> 0).toString(36)}`;
+}
+
 export default async function Katalog() {
   // Catalog and session data are independent, so start both network requests
   // together instead of serializing them on every navigation.
   const [catalog, viewer] = await Promise.all([getPublicCatalog(), getViewer()]);
   const demoProducts = process.env.NODE_ENV !== 'production' && catalog === null ? mockProducts : [];
+  const catalogProducts = catalog?.products ?? demoProducts;
 
   return (
-    <CatalogPage
-      initialProducts={catalog?.products ?? demoProducts}
-      store={catalog?.store ?? null}
-      storeOptions={catalog?.stores ?? []}
-      viewerRole={viewer.role}
-      viewerUserId={viewer.userId}
-    />
+    <>
+      <CatalogPage
+        key={viewer.role === 'anggota' ? 'member-catalog' : getCatalogProductsKey(catalogProducts)}
+        initialProducts={catalogProducts}
+        store={catalog?.store ?? null}
+        storeOptions={catalog?.stores ?? []}
+        viewerRole={viewer.role}
+        viewerUserId={viewer.userId}
+      />
+      {viewer.role !== 'anggota' && <PublicCatalogAutoRefresh />}
+    </>
   );
 }
