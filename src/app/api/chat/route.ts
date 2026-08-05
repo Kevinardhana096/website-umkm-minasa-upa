@@ -22,10 +22,8 @@ import {
   type ChatStoreContext,
 } from "@/lib/chat";
 import {
-  hasCatalogScopeSignal,
   hasContactSignal,
   hasPurchaseSignal,
-  isIntentScopeAllowed,
   isObviousOffTopicRequest,
 } from "@/lib/chat-policy";
 import type { Product } from "@/types/product";
@@ -811,15 +809,8 @@ export async function POST(request: Request) {
 
   if (productWebsiteHelpReply) return NextResponse.json(productWebsiteHelpReply);
 
-  if (catalog?.status === "unavailable" && hasCatalogScopeSignal(message)) {
-    return NextResponse.json(buildCatalogUnavailableReply());
-  }
-
   const chatIntent = !relevantProduct ? await requestChatIntent(message, history) : null;
   if (chatIntent?.route === "off_topic") return NextResponse.json(buildOffTopicChatReply());
-  if (chatIntent && !isIntentScopeAllowed(chatIntent.route, message, Boolean(relevantProduct))) {
-    return NextResponse.json(buildOffTopicChatReply());
-  }
 
   const publicKnowledgeIntent = chatIntent ? getPublicKnowledgeIntent(chatIntent.route) : undefined;
   const intentKnowledgeReply = publicKnowledgeIntent
@@ -834,11 +825,6 @@ export async function POST(request: Request) {
 
   if (catalog?.status === "unavailable" && chatIntent?.route === "catalog_ai") {
     return NextResponse.json(buildCatalogUnavailableReply());
-  }
-
-  const scopeRequiredRoute = chatIntent?.route === "web" || chatIntent?.route === "catalog_ai";
-  if ((!chatIntent && !hasScopeSignal && !relevantProduct) || (scopeRequiredRoute && !hasScopeSignal)) {
-    return NextResponse.json(buildOffTopicChatReply());
   }
 
   const webSearchRequested = chatIntent
