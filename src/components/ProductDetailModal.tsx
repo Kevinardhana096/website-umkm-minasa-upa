@@ -4,6 +4,7 @@ import React, { useEffect, useRef, useState } from 'react';
 import Image from 'next/image';
 import { Product } from '@/types/product';
 import { formatRupiah } from '@/lib/products';
+import { MarkdownContent } from '@/components/MarkdownContent';
 import { 
   X, 
   CheckCircle2, 
@@ -293,9 +294,7 @@ export const ProductDetailModal: React.FC<ProductDetailModalProps> = ({
                   <Layers className="w-3.5 h-3.5 text-[#963E1B]" />
                   Tentang Produk Ini
                 </h3>
-                <p className="text-xs sm:text-sm text-gray-600 leading-relaxed">
-                  {product.fullDescription || product.description}
-                </p>
+                <MarkdownContent content={product.fullDescription || product.description} className="text-xs sm:text-sm text-gray-600 leading-relaxed [&_ul]:ml-5 [&_ol]:ml-5 [&_li]:pl-1" />
               </div>
 
               {/* Specifications */}

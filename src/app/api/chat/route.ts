@@ -11,9 +11,11 @@ import {
   buildDirectChatReply,
   buildFallbackChatReply,
   buildCatalogUnavailableReply,
+  buildProductListReply,
   buildProductExplanationReply,
   buildWebSearchUnavailableReply,
   findRelevantProduct,
+  isProductListRequest,
   hasRelevantScopeSignal,
   isRestrictedChatRequest,
   shouldUseWebSearch,
@@ -774,6 +776,10 @@ export async function POST(request: Request) {
 
   const catalog = await getPublicCatalog();
   const catalogProducts = catalog?.products.map(toChatProduct) ?? [];
+  if (isProductListRequest(message)) {
+    if (!catalog || catalog.status === "unavailable") return NextResponse.json(buildCatalogUnavailableReply());
+    return NextResponse.json(buildProductListReply(catalogProducts));
+  }
   const clientProduct = parseClientProduct(body.product);
   const clientStore = parseClientStore(body.store);
   const history = parseClientHistory(body.history);

@@ -44,6 +44,8 @@ export interface ChatReply {
   cachedAt?: string;
 }
 
+const PRODUCT_LIST_REQUEST_PATTERN = /(?:\bapa\s+saja\b[\s\S]{0,40}\bproduk\b|\bproduk(?:-produk)?\s+(?:apa\s+saja|yang\s+(?:tersedia|ada))\b|\bdaftar\s+produk\b|\b(?:tampilkan|sebutkan|list)\b[\s\S]{0,40}\bproduk\b|\bada\s+(?:produk|barang)\s+apa\b)/i;
+
 const RESTRICTED_INTERNAL_PATTERN = /api\s*key|service[-\s]?role|secret|password|kata\s+sandi|bypass|lewati\s+(login|autentikasi)|environment|\.env|database|basis\s+data|source\s+code|kode\s+sumber|detail\s+internal/i;
 const PUBLIC_ACCOUNT_HELP_PATTERN = /(?:lupa|reset|ubah|ganti|mengganti|tidak\s+bisa|tidak\s+dapat)[\s\S]{0,60}(?:password|kata\s+sandi)|(?:password|kata\s+sandi)[\s\S]{0,60}(?:lupa|reset|ubah|ganti|login|masuk)/i;
 
@@ -54,6 +56,31 @@ export function isRestrictedChatRequest(message: string) {
 
 export function hasRelevantScopeSignal(message: string, hasProduct = false) {
   return detectRelevantScopeSignal(message, hasProduct);
+}
+
+export function isProductListRequest(message: string) {
+  return PRODUCT_LIST_REQUEST_PATTERN.test(message);
+}
+
+export function buildProductListReply(products: ChatProductContext[]): ChatReply {
+  if (products.length === 0) {
+    return {
+      reply: "Belum ada produk yang tersedia di katalog saat ini.",
+      source: "catalog",
+    };
+  }
+
+  const productLines = products.slice(0, 40).map((product, index) => {
+    const price = product.price === null ? "hubungi penjual" : formatRupiah(product.price);
+    const status = product.isAvailable ? "tersedia" : "belum tersedia";
+    return `${index + 1}. ${product.name} — ${price} (${status}), dari ${product.merchantName}.`;
+  });
+  const suffix = products.length > 40 ? `\n\nMenampilkan 40 dari ${products.length} produk.` : "";
+
+  return {
+    reply: `Berikut produk yang tersedia di katalog UMKM:\n\n${productLines.join("\n")}\n\nPilih produk di katalog untuk melihat detail lengkap atau menghubungi penjual melalui WhatsApp.${suffix}`,
+    source: "catalog",
+  };
 }
 
 export function buildOffTopicChatReply(): ChatReply {

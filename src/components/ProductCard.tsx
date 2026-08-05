@@ -4,7 +4,8 @@ import React from 'react';
 import Image from 'next/image';
 import { Product } from '@/types/product';
 import { formatRupiah } from '@/lib/products';
-import { ShieldCheck, MapPin, Eye, Clock, CheckCircle2, Edit, Trash2 } from 'lucide-react';
+import { MarkdownContent } from '@/components/MarkdownContent';
+import { ShieldCheck, MapPin, Eye, Clock, CheckCircle2, Edit, Trash2, ChevronRight } from 'lucide-react';
 
 interface ProductCardProps {
   product: Product;
@@ -82,10 +83,25 @@ export const ProductCard: React.FC<ProductCardProps> = ({ product, onDetailClick
             </span>
           </div>
 
-          {/* Short Description (Hidden on 2-column mobile layout for uniform height) */}
-          <p className="hidden sm:block mt-2.5 sm:mt-3 text-xs sm:text-sm text-gray-600 line-clamp-2 leading-relaxed">
-            {product.description}
-          </p>
+          {/* Short Description */}
+          {product.description && (
+            <div className="mt-2.5 sm:mt-3">
+              <MarkdownContent content={product.description} className="text-xs sm:text-sm text-gray-600 line-clamp-2 leading-relaxed" />
+              {product.description.length > 50 && (
+                <button
+                  type="button"
+                  onClick={(event) => {
+                    event.stopPropagation();
+                    onDetailClick(product);
+                  }}
+                  className="mt-1 text-[11px] sm:text-xs font-semibold text-[#963E1B] hover:text-[#0F2C23] hover:underline inline-flex items-center gap-0.5 transition-colors focus:outline-none"
+                >
+                  <span>Detail Selengkapnya</span>
+                  <ChevronRight className="w-3 h-3" />
+                </button>
+              )}
+            </div>
+          )}
         </div>
 
         {/* Card Footer: Price, Stock & Detail CTA */}

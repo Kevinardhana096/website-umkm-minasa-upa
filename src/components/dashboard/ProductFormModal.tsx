@@ -217,7 +217,8 @@ export function ProductFormModal({
           </Field>
 
           <Field label="Deskripsi Produk *">
-            <textarea required rows={3} value={form.description} onChange={(event) => setForm({ ...form, description: event.target.value })} placeholder="Jelaskan bahan, keunggulan, dan detail produk..." className="w-full resize-none rounded-xl border border-gray-200 bg-white px-3.5 py-2.5 outline-none transition-all placeholder:text-gray-400 focus:border-[#0F2C23] focus:ring-2 focus:ring-[#0F2C23]/15" />
+            <textarea required rows={6} value={form.description} onChange={(event) => setForm({ ...form, description: event.target.value })} placeholder={'Contoh:\n## Keunggulan\n\n- Bahan lokal\n- Tanpa pengawet'} className="w-full resize-none rounded-xl border border-gray-200 bg-white px-3.5 py-2.5 font-mono text-xs outline-none transition-all placeholder:font-sans placeholder:text-gray-400 focus:border-[#0F2C23] focus:ring-2 focus:ring-[#0F2C23]/15" />
+            <p className="mt-1 text-[11px] text-gray-400">Mendukung Markdown: heading, **tebal**, *miring*, daftar, tautan, dan kode.</p>
           </Field>
 
           <Field label="Harga (Rp, opsional)">

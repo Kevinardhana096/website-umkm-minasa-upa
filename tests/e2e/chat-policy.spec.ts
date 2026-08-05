@@ -1,6 +1,7 @@
 import { expect, test, type APIRequestContext } from "@playwright/test";
 import { buildPublicKnowledgeReply, getPublicKnowledgeContext, getPublicKnowledgeMetadata } from "../../src/lib/knowledge";
 import { buildWebsiteHelpReply } from "../../src/lib/site-knowledge";
+import { buildProductListReply, isProductListRequest } from "../../src/lib/chat";
 
 async function ask(request: APIRequestContext, message: string, extra: Record<string, unknown> = {}) {
   const response = await request.post("/api/chat", {
@@ -12,6 +13,30 @@ async function ask(request: APIRequestContext, message: string, extra: Record<st
 }
 
 test.describe("chat policy", () => {
+  test("pertanyaan daftar produk diarahkan ke daftar katalog", () => {
+    expect(isProductListRequest("Apa saja produk yang ada di website ini?")).toBe(true);
+    expect(isProductListRequest("Tampilkan daftar produk yang tersedia")).toBe(true);
+    expect(isProductListRequest("Bagaimana cara membeli produk?")).toBe(false);
+  });
+
+  test("jawaban daftar produk memakai data katalog", () => {
+    const response = buildProductListReply([
+      {
+        id: "product-1",
+        name: "Keripik Pisang",
+        merchantName: "UMKM Minasa Upa",
+        description: "Keripik renyah.",
+        price: 15000,
+        isAvailable: true,
+        whatsappNumber: "628123456789",
+      },
+    ]);
+
+    expect(response.source).toBe("catalog");
+    expect(response.reply).toContain("Keripik Pisang");
+    expect(response.reply).toContain("Rp15.000");
+  });
+
   test("pertanyaan memilih toko di katalog tidak diarahkan ke bantuan akun", () => {
     const response = buildWebsiteHelpReply("Bagaimana cara memilih toko di katalog?");
 

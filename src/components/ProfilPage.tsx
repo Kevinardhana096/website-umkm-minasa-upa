@@ -15,8 +15,10 @@ import { Navbar } from './Navbar';
 import { Footer } from './Footer';
 import { FloatingChatWidget, FloatingChatWidgetRef } from './FloatingChatWidget';
 import { VillageLocationSection } from './VillageLocationSection';
+import { ProductDetailModal } from './ProductDetailModal';
 import { formatRupiah, type CatalogStore } from '@/lib/products';
 import type { Product } from '@/types/product';
+import { MarkdownContent } from './MarkdownContent';
 
 interface ProfilPageProps {
   store?: CatalogStore | null;
@@ -25,6 +27,7 @@ interface ProfilPageProps {
 
 export const ProfilPage: React.FC<ProfilPageProps> = ({ store = null, products = [] }) => {
   const chatWidgetRef = useRef<FloatingChatWidgetRef>(null);
+  const [selectedProduct, setSelectedProduct] = useState<Product | null>(null);
 
   const heroSlides = [
     {
@@ -260,13 +263,16 @@ export const ProfilPage: React.FC<ProfilPageProps> = ({ store = null, products =
               {featuredProducts.map((product) => (
               <div 
                 key={product.id}
-                className="bg-white rounded-2xl overflow-hidden border border-gray-200/80 shadow-2xs hover:shadow-md transition-all flex flex-col group"
+                onClick={() => setSelectedProduct(product)}
+                className="bg-white rounded-2xl overflow-hidden border border-gray-200/80 shadow-2xs hover:shadow-md transition-all flex flex-col group cursor-pointer"
               >
                 <div className="relative h-48 w-full overflow-hidden bg-gray-100">
                   <Image
                     src={product.imageUrl || '/food_umkm.jpg'}
                     alt={product.name}
                     fill
+                    unoptimized
+                    sizes="(max-width: 640px) 100vw, (max-width: 1024px) 50vw, 25vw"
                     className="object-cover group-hover:scale-105 transition-transform duration-300"
                   />
                   {product.isVerified && (
@@ -285,19 +291,41 @@ export const ProfilPage: React.FC<ProfilPageProps> = ({ store = null, products =
                     <h3 className="text-sm font-bold text-gray-900 mt-1 line-clamp-2 leading-snug">
                       {product.name}
                     </h3>
+                    {product.description && (
+                      <div className="mt-2">
+                        <MarkdownContent content={product.description} className="text-xs text-gray-600 line-clamp-2 leading-relaxed" />
+                        {product.description.length > 50 && (
+                          <button
+                            type="button"
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              setSelectedProduct(product);
+                            }}
+                            className="mt-1 text-[11px] font-semibold text-[#963E1B] hover:text-[#0F2C23] hover:underline inline-flex items-center gap-0.5 transition-colors focus:outline-none"
+                          >
+                            <span>Detail Selengkapnya</span>
+                            <ChevronRight className="w-3 h-3" />
+                          </button>
+                        )}
+                      </div>
+                    )}
                   </div>
 
                   <div className="mt-4 pt-3 border-t border-gray-100 flex items-center justify-between">
                     <span className="text-sm font-extrabold text-gray-900">
                       {formatRupiah(product.price)}
                     </span>
-                    <Link
-                      href="/katalog"
+                    <button
+                      type="button"
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        setSelectedProduct(product);
+                      }}
                       className="p-2 rounded-lg bg-gray-100 text-gray-700 hover:bg-[#0F2C23] hover:text-white transition-colors"
-                      title="Lihat di Katalog"
+                      title="Lihat Detail Produk"
                     >
                       <ShoppingBag className="w-4 h-4" />
-                    </Link>
+                    </button>
                   </div>
                 </div>
               </div>
@@ -331,6 +359,14 @@ export const ProfilPage: React.FC<ProfilPageProps> = ({ store = null, products =
 
       {/* Footer */}
       <Footer store={store} />
+
+      {/* Product Detail Modal */}
+      <ProductDetailModal
+        key={selectedProduct?.id ?? "closed"}
+        product={selectedProduct}
+        onClose={() => setSelectedProduct(null)}
+        onAskBot={(prod) => chatWidgetRef.current?.askAboutProduct(prod)}
+      />
 
       {/* Floating Chat Widget */}
       <FloatingChatWidget ref={chatWidgetRef} />
