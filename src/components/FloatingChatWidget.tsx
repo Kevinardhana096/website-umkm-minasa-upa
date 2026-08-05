@@ -1,7 +1,8 @@
 'use client';
 
 import React, { forwardRef, useEffect, useImperativeHandle, useRef, useState } from 'react';
-import { Bot, MessageSquareText, Send, X } from 'lucide-react';
+import { Send, X } from 'lucide-react';
+import { DotLottieReact } from '@lottiefiles/dotlottie-react';
 import {
   buildFallbackChatReply,
   type ChatProductContext,
@@ -166,7 +167,11 @@ export const FloatingChatWidget = forwardRef<FloatingChatWidgetRef, FloatingChat
   };
 
   useImperativeHandle(ref, () => ({
-    openChat: () => setIsOpen(true),
+    openChat: () => {
+      setContextProduct(null);
+      setMessages([{ sender: 'bot', text: 'Halo! Ada yang bisa saya bantu terkait produk?' }]);
+      setIsOpen(true);
+    },
     askAboutProduct: (product: Product) => {
       setContextProduct(product);
       setIsOpen(true);
@@ -183,13 +188,23 @@ export const FloatingChatWidget = forwardRef<FloatingChatWidgetRef, FloatingChat
     void requestBotReply(userMessage);
   };
 
+  const toggleGlobalChat = () => {
+    if (isOpen) {
+      setIsOpen(false);
+      return;
+    }
+    setContextProduct(null);
+    setMessages([{ sender: 'bot', text: 'Halo! Ada yang bisa saya bantu terkait produk?' }]);
+    setIsOpen(true);
+  };
+
   return (
     <div className="fixed bottom-4 right-4 sm:bottom-6 sm:right-6 z-50">
       {isOpen && (
         <div role="dialog" aria-modal="false" aria-label="Asisten UMKM Bot" className="fixed bottom-20 right-4 left-4 z-50 flex h-[440px] max-h-[75vh] flex-col overflow-hidden rounded-2xl border border-gray-200 bg-white shadow-2xl sm:absolute sm:bottom-16 sm:right-0 sm:left-auto sm:h-[460px] sm:w-96">
           <div className="flex items-center justify-between bg-[#963E1B] p-4 text-white">
             <div className="flex items-center gap-2.5">
-              <div className="flex h-8 w-8 items-center justify-center rounded-full bg-white/20"><Bot className="h-5 w-5" /></div>
+              <div className="flex h-9 w-9 items-center justify-center overflow-hidden"><DotLottieReact src="https://lottie.host/c0ff9600-dd79-4a92-91d2-da4986399c36/rc8EdQGXyJ.json" loop autoplay className="h-9 w-9 object-contain" /></div>
               <div><h4 className="text-sm font-bold">Asisten UMKM Bot</h4><p className="flex items-center gap-1 text-[11px] text-amber-100"><span className="h-2 w-2 rounded-full bg-emerald-400" /> Online</p></div>
             </div>
             <button onClick={() => setIsOpen(false)} className="rounded-lg p-1 text-white transition-colors hover:bg-white/20" aria-label="Tutup chat"><X className="h-5 w-5" /></button>
@@ -197,7 +212,12 @@ export const FloatingChatWidget = forwardRef<FloatingChatWidgetRef, FloatingChat
 
           <div aria-live="polite" className="flex-1 space-y-3 overflow-y-auto bg-gray-50/50 p-4">
             {messages.map((message, index) => (
-              <div key={`${message.sender}-${index}`} className={`flex ${message.sender === 'user' ? 'justify-end' : 'justify-start'}`}>
+              <div key={`${message.sender}-${index}`} className={`flex items-start gap-2 ${message.sender === 'user' ? 'justify-end' : 'justify-start'}`}>
+                {message.sender === 'bot' && (
+                  <div className="flex h-9 w-9 shrink-0 items-center justify-center overflow-hidden mt-0.5">
+                    <DotLottieReact src="https://lottie.host/c0ff9600-dd79-4a92-91d2-da4986399c36/rc8EdQGXyJ.json" loop autoplay className="h-8 w-8 object-contain" />
+                  </div>
+                )}
                 <div className={`max-w-[85%] sm:max-w-[82%] rounded-2xl px-3.5 py-2.5 text-xs leading-relaxed ${message.sender === 'user' ? 'rounded-br-none bg-[#0F2C23] text-white' : 'rounded-bl-none border border-gray-200 bg-white text-gray-800 shadow-sm'}`}>
                   <p>{message.text}</p>
                   {message.whatsappUrl && <a href={message.whatsappUrl} target="_blank" rel="noreferrer" className="mt-2 inline-flex rounded-lg bg-[#25D366] px-2.5 py-1.5 text-[11px] font-bold text-white hover:bg-[#1ebe5d]">Chat penjual di WhatsApp</a>}
@@ -218,7 +238,14 @@ export const FloatingChatWidget = forwardRef<FloatingChatWidgetRef, FloatingChat
                 </div>
               </div>
             ))}
-            {isReplying && <div className="flex justify-start"><div className="rounded-2xl rounded-bl-none border border-gray-200 bg-white px-3.5 py-2.5 text-xs text-gray-500 shadow-sm">Asisten sedang menyiapkan jawaban...</div></div>}
+            {isReplying && (
+              <div className="flex items-start gap-2 justify-start">
+                <div className="flex h-9 w-9 shrink-0 items-center justify-center overflow-hidden mt-0.5">
+                  <DotLottieReact src="https://lottie.host/c0ff9600-dd79-4a92-91d2-da4986399c36/rc8EdQGXyJ.json" loop autoplay className="h-8 w-8 object-contain" />
+                </div>
+                <div className="rounded-2xl rounded-bl-none border border-gray-200 bg-white px-3.5 py-2.5 text-xs text-gray-500 shadow-sm">Asisten sedang menyiapkan jawaban...</div>
+              </div>
+            )}
           </div>
 
           <form onSubmit={handleSend} className="flex gap-2 border-t border-gray-100 bg-white p-3">
@@ -228,8 +255,52 @@ export const FloatingChatWidget = forwardRef<FloatingChatWidgetRef, FloatingChat
         </div>
       )}
 
-      <button onClick={() => setIsOpen((open) => !open)} className="group flex h-12 w-12 sm:h-14 sm:w-14 items-center justify-center rounded-full bg-[#963E1B] text-white shadow-xl transition-all hover:bg-[#803214] active:scale-95" aria-label={isOpen ? 'Tutup chat' : 'Buka chat'}>
-        {isOpen ? <X className="h-5 w-5 sm:h-6 sm:w-6" /> : <MessageSquareText className="h-5 w-5 sm:h-6 sm:w-6 transition-transform group-hover:scale-110" />}
+      <button
+        onClick={toggleGlobalChat}
+        className="relative group flex h-14 w-14 items-center justify-center bg-transparent border-0 outline-none transition-transform duration-300 hover:scale-110 active:scale-95 cursor-pointer overflow-visible"
+        aria-label={isOpen ? 'Tutup chat' : 'Buka chat'}
+      >
+        {/* Icon State Terbuka (Sesudah Diklik: Ukuran 56px + Border + Latar Kaca) */}
+        <div
+          className={`absolute inset-0 flex items-center justify-center rounded-full border-2 border-[#963E1B] bg-white/90 shadow-lg backdrop-blur-sm p-1 transition-all duration-300 ease-in-out ${
+            isOpen
+              ? 'opacity-100 scale-100 rotate-0'
+              : 'opacity-0 scale-75 -rotate-45 pointer-events-none'
+          }`}
+        >
+          <DotLottieReact
+            src="https://lottie.host/92e7e97e-6040-4a57-9fd3-a4ea67089d69/POemVQfC1f.json"
+            loop
+            autoplay
+            className="w-full h-full object-contain"
+          />
+        </div>
+
+        {/* Icon State Tertutup (Sebelum Diklik: Ukuran Super Besar 140px Tanpa Border, Pusat Presisi Sama) */}
+        <div
+          className={`absolute flex items-center justify-center transition-all duration-300 ease-in-out ${
+            !isOpen
+              ? 'opacity-100 scale-100 rotate-0'
+              : 'opacity-0 scale-75 rotate-45 pointer-events-none'
+          }`}
+          style={{
+            width: '140px',
+            height: '140px',
+            minWidth: '140px',
+            minHeight: '140px',
+            left: '50%',
+            top: '50%',
+            transform: !isOpen ? 'translate(-50%, -50%) scale(1) rotate(0deg)' : 'translate(-50%, -50%) scale(0.75) rotate(45deg)',
+          }}
+        >
+          <DotLottieReact
+            src="https://lottie.host/d7de6955-bb66-47ca-92c8-0e44941d9e45/rs7fNH9m6e.json"
+            loop
+            autoplay
+            style={{ width: '140px', height: '140px', minWidth: '140px', minHeight: '140px' }}
+            className="drop-shadow-md w-full h-full object-contain"
+          />
+        </div>
       </button>
     </div>
   );

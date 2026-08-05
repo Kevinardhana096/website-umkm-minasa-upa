@@ -12,6 +12,7 @@
     "create:admin": "node scripts/create-admin.mjs"
   },
   "dependencies": {
+    "@lottiefiles/dotlottie-react": "^0.19.12",
     "@supabase/ssr": "^0.12.4",
     "@supabase/supabase-js": "^2.111.0",
     "@upstash/ratelimit": "^2.0.8",

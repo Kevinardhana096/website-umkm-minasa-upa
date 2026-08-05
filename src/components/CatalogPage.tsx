@@ -288,7 +288,7 @@ export const CatalogPage: React.FC<CatalogPageProps> = ({
       )}
 
       {/* Floating Chat Widget */}
-      <FloatingChatWidget ref={chatWidgetRef} store={store} />
+      <FloatingChatWidget ref={chatWidgetRef} />
     </div>
   );
 };

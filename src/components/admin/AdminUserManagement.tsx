@@ -274,9 +274,9 @@ export function AdminUserManagement() {
 
       {/* Modal Popup Buat User */}
       {isFormOpen && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/50 backdrop-blur-xs animate-in fade-in duration-200">
-          <div className="fixed inset-0" onClick={() => setIsFormOpen(false)} aria-hidden="true" />
-          <div className="relative w-full max-w-lg rounded-2xl border border-gray-100 bg-white p-6 shadow-2xl animate-in zoom-in-95 duration-200">
+        <div className="fixed inset-0 z-50 flex items-center justify-center overflow-hidden bg-black/50 p-3 backdrop-blur-xs animate-in fade-in duration-200 sm:p-4">
+          <div className="absolute inset-0" onClick={() => setIsFormOpen(false)} aria-hidden="true" />
+          <div className="relative flex max-h-[calc(100dvh-1.5rem)] w-full max-w-lg flex-col overflow-hidden rounded-2xl border border-gray-100 bg-white p-4 shadow-2xl animate-in zoom-in-95 duration-200 sm:max-h-[calc(100dvh-2rem)] sm:p-6">
             <div className="flex items-center justify-between border-b border-gray-100 pb-4">
               <div className="flex items-center gap-2.5">
                 <div className="flex h-9 w-9 items-center justify-center rounded-xl bg-[#0F2C23]/10 text-[#0F2C23]">
@@ -297,7 +297,7 @@ export function AdminUserManagement() {
               </button>
             </div>
 
-            <form onSubmit={createUser} className="mt-5 space-y-4">
+            <form onSubmit={createUser} className="mt-5 min-h-0 flex-1 space-y-4 overflow-y-auto overscroll-contain pr-1">
               <div>
                 <label className="block text-xs font-bold uppercase tracking-wider text-gray-700">Nama Lengkap</label>
                 <input
@@ -396,9 +396,9 @@ export function AdminUserManagement() {
       )}
 
       {resetTarget && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4 backdrop-blur-xs" role="dialog" aria-modal="true" aria-labelledby="reset-password-title">
-          <div className="fixed inset-0" onClick={() => setResetTarget(null)} aria-hidden="true" />
-          <div className="relative w-full max-w-md rounded-2xl border border-gray-100 bg-white p-6 shadow-2xl">
+        <div className="fixed inset-0 z-50 flex items-center justify-center overflow-hidden bg-black/50 p-3 backdrop-blur-xs sm:p-4" role="dialog" aria-modal="true" aria-labelledby="reset-password-title">
+          <div className="absolute inset-0" onClick={() => setResetTarget(null)} aria-hidden="true" />
+          <div className="relative flex max-h-[calc(100dvh-1.5rem)] w-full max-w-md flex-col overflow-hidden rounded-2xl border border-gray-100 bg-white p-4 shadow-2xl sm:max-h-[calc(100dvh-2rem)] sm:p-6">
             <div className="flex items-center justify-between border-b border-gray-100 pb-4">
               <div className="flex items-center gap-2.5">
                 <div className="flex h-9 w-9 items-center justify-center rounded-xl bg-[#0F2C23]/10 text-[#0F2C23]"><KeyRound className="h-5 w-5" /></div>
@@ -412,7 +412,7 @@ export function AdminUserManagement() {
               </button>
             </div>
 
-            <form onSubmit={submitResetPassword} className="mt-5 space-y-4">
+            <form onSubmit={submitResetPassword} className="mt-5 min-h-0 flex-1 space-y-4 overflow-y-auto overscroll-contain pr-1">
               <div>
                 <label className="block text-xs font-bold uppercase tracking-wider text-gray-700">Password baru <span className="text-red-500">*</span></label>
                 <div className="relative mt-1.5">

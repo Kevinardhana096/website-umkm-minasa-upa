@@ -16,9 +16,9 @@ export function AdminStoreEditModal({ store, isSaving, onClose, onSave }: AdminS
   if (!store) return null;
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center overflow-y-auto bg-black/60 p-4 backdrop-blur-sm">
-      <div className="fixed inset-0" onClick={onClose} aria-hidden="true" />
-      <div className="relative my-6 w-full max-w-3xl">
+    <div className="fixed inset-0 z-50 flex items-center justify-center overflow-hidden bg-black/60 p-3 backdrop-blur-sm sm:p-4">
+      <div className="absolute inset-0" onClick={onClose} aria-hidden="true" />
+      <div className="relative flex max-h-[calc(100dvh-1.5rem)] w-full max-w-3xl flex-col overflow-y-auto overscroll-contain sm:max-h-[calc(100dvh-2rem)]">
         <div className="mb-3 flex items-center justify-between rounded-2xl border border-gray-100 bg-white px-5 py-3 shadow-xl">
           <div>
             <p className="text-xs font-extrabold uppercase tracking-wider text-[#0F2C23]">Edit lintas toko</p>

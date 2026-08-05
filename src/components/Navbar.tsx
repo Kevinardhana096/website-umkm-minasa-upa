@@ -3,8 +3,8 @@
 import React, { useState, useEffect, useRef } from 'react';
 import Image from 'next/image';
 import Link from 'next/link';
-import { usePathname } from 'next/navigation';
-import { MessageSquare, Menu, X, User, ShoppingBag } from 'lucide-react';
+import { usePathname, useRouter } from 'next/navigation';
+import { LogOut, MessageSquare, Menu, X, User, ShoppingBag } from 'lucide-react';
 import { InstitutionalLogos } from './InstitutionalLogos';
 import { createClient } from '@/lib/supabase/client';
 
@@ -18,8 +18,10 @@ export const Navbar: React.FC<NavbarProps> = ({
   transparentAtTop = false,
 }) => {
   const pathname = usePathname();
+  const router = useRouter();
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
   const [isAtTop, setIsAtTop] = useState(true);
+  const [isSigningOut, setIsSigningOut] = useState(false);
   const headerRef = useRef<HTMLElement>(null);
   const [dashboardHref, setDashboardHref] = useState<string | null>(null);
   const [dashboardLabel, setDashboardLabel] = useState('Login Pengelola');
@@ -89,6 +91,21 @@ export const Navbar: React.FC<NavbarProps> = ({
   const isProfilActive = pathname === '/' || pathname === '/profil';
   const isKatalogActive = pathname === '/katalog';
   const isTransparentAtTop = transparentAtTop && isAtTop && !mobileMenuOpen;
+
+  const handleSignOut = async () => {
+    setIsSigningOut(true);
+    const supabase = createClient();
+    try {
+      await supabase.auth.signOut();
+      setDashboardHref(null);
+      setDashboardLabel('Login Pengelola');
+      setMobileMenuOpen(false);
+      router.replace('/login');
+      router.refresh();
+    } finally {
+      setIsSigningOut(false);
+    }
+  };
 
   return (
     <header
@@ -194,6 +211,21 @@ export const Navbar: React.FC<NavbarProps> = ({
               >
                 {dashboardLabel}
               </a>
+              {dashboardHref && (
+                <button
+                  type="button"
+                  onClick={() => void handleSignOut()}
+                  disabled={isSigningOut}
+                  className={`inline-flex items-center gap-1.5 rounded-lg px-3 py-1.5 text-xs font-semibold transition-all disabled:cursor-wait disabled:opacity-60 sm:text-sm ${
+                    isTransparentAtTop
+                      ? 'border border-white/30 bg-black/10 text-white/90 backdrop-blur-sm hover:bg-white/15 hover:text-white'
+                      : 'text-gray-700 hover:bg-gray-100 hover:text-[#0F2C23]'
+                  }`}
+                >
+                  <LogOut className="h-3.5 w-3.5" />
+                  <span>{isSigningOut ? 'Keluar...' : 'Logout'}</span>
+                </button>
+              )}
               <button
                 onClick={onContactClick}
                 className={`inline-flex items-center gap-1.5 rounded-lg px-3.5 py-1.5 text-xs font-semibold active:scale-95 transition-all shadow-xs sm:text-sm ${
@@ -263,6 +295,17 @@ export const Navbar: React.FC<NavbarProps> = ({
             >
               {dashboardLabel}
             </a>
+            {dashboardHref && (
+              <button
+                type="button"
+                onClick={() => void handleSignOut()}
+                disabled={isSigningOut}
+                className="flex items-center justify-center gap-2 w-full rounded-lg border border-gray-200 py-2.5 text-sm font-semibold text-gray-700 hover:bg-gray-50 disabled:cursor-wait disabled:opacity-60"
+              >
+                <LogOut className="h-4 w-4" />
+                <span>{isSigningOut ? 'Keluar...' : 'Logout'}</span>
+              </button>
+            )}
             <button
               onClick={() => {
                 setMobileMenuOpen(false);

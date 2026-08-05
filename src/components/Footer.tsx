@@ -10,7 +10,8 @@ interface FooterProps {
 }
 
 export const Footer: React.FC<FooterProps> = ({ store }) => {
-  const storeName = store?.name ?? 'UMKM Wanita Tangguh Minasa Upa';
+  const groupName = 'UMKM Wanita Tangguh Minasa Upa';
+  const groupDescription = 'Kelompok UMKM Wanita Tangguh Minasa Upa hadir sebagai wadah kolaborasi untuk meningkatkan kemandirian ekonomi keluarga di bidang makanan, minuman, dan kerajinan.';
 
   return (
     <footer className="bg-[#E7E7E7] text-gray-700 mt-20 border-t border-gray-300/80">
@@ -20,10 +21,10 @@ export const Footer: React.FC<FooterProps> = ({ store }) => {
           {/* Column 1: Store Bio */}
           <div>
             <h3 className="text-lg font-bold text-gray-900 tracking-tight">
-              {storeName}
+              {groupName}
             </h3>
             <p className="mt-4 text-xs sm:text-sm text-gray-600 leading-relaxed max-w-sm">
-              {store?.description ?? 'Kelompok UMKM Wanita Tangguh Minasa Upa hadir sebagai wadah kolaborasi untuk meningkatkan kemandirian ekonomi keluarga di bidang makanan, minuman, dan kerajinan.'}
+              {groupDescription}
             </p>
           </div>
 

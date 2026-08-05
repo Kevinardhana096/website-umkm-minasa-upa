@@ -327,7 +327,7 @@ export const ProfilPage: React.FC<ProfilPageProps> = ({ store = null, products =
       <Footer store={store} />
 
       {/* Floating Chat Widget */}
-      <FloatingChatWidget ref={chatWidgetRef} store={store} />
+      <FloatingChatWidget ref={chatWidgetRef} />
     </div>
   );
 };
