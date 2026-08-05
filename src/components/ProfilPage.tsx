@@ -308,102 +308,102 @@ export const ProfilPage: React.FC<ProfilPageProps> = ({ store = null, products =
 
           {/* Product Grid / Horizontal Carousel Container */}
           {featuredProducts.length > 0 ? (
-            <div className="relative group">
-              {/* Mobile-Only Side Navigation Arrow Buttons */}
+            <div className="relative w-full">
+              {/* Mobile-Only Outward Side Floating Arrow Buttons (Frosted Glass Transparent BG & Border) */}
               <button
                 type="button"
                 onClick={scrollFeaturedLeft}
                 aria-label="Scroll Produk Unggulan ke Kiri"
-                className="absolute -left-2 top-1/2 -translate-y-1/2 z-20 cursor-pointer rounded-full bg-white/95 border border-gray-200/90 p-2 text-[#0F2C23] shadow-md backdrop-blur-xs transition-all active:scale-90 sm:hidden"
+                className="absolute -left-3.5 top-1/2 -translate-y-1/2 z-20 cursor-pointer rounded-full bg-white/40 border border-white/50 backdrop-blur-md p-2 text-[#0F2C23] shadow-md hover:bg-white/70 active:scale-90 transition-all sm:hidden"
               >
-                <ChevronLeft className="w-5 h-5" />
+                <ChevronLeft className="w-4 h-4" />
               </button>
 
               <button
                 type="button"
                 onClick={scrollFeaturedRight}
                 aria-label="Scroll Produk Unggulan ke Kanan"
-                className="absolute -right-2 top-1/2 -translate-y-1/2 z-20 cursor-pointer rounded-full bg-white/95 border border-gray-200/90 p-2 text-[#0F2C23] shadow-md backdrop-blur-xs transition-all active:scale-90 sm:hidden"
+                className="absolute -right-3.5 top-1/2 -translate-y-1/2 z-20 cursor-pointer rounded-full bg-white/40 border border-white/50 backdrop-blur-md p-2 text-[#0F2C23] shadow-md hover:bg-white/70 active:scale-90 transition-all sm:hidden"
               >
-                <ChevronRight className="w-5 h-5" />
+                <ChevronRight className="w-4 h-4" />
               </button>
 
               <div
                 ref={featuredScrollRef}
                 className="flex overflow-x-auto snap-x snap-mandatory pb-4 gap-3 sm:gap-6 sm:grid sm:grid-cols-2 lg:grid-cols-4 sm:overflow-visible scrollbar-none"
               >
-              {featuredProducts.map((product) => (
-              <div 
-                key={product.id}
-                onClick={() => setSelectedProduct(product)}
-                className="w-[calc(50%-0.375rem)] min-w-[calc(50%-0.375rem)] shrink-0 snap-start sm:w-auto sm:min-w-0 sm:shrink bg-white rounded-2xl overflow-hidden border border-gray-200/80 shadow-2xs hover:shadow-md transition-all flex flex-col group cursor-pointer"
-              >
-                <div className="relative h-36 sm:h-48 w-full overflow-hidden bg-gray-100">
-                  <Image
-                    src={product.imageUrl || '/food_umkm.jpg'}
-                    alt={product.name}
-                    fill
-                    unoptimized
-                    sizes="(max-width: 640px) 50vw, (max-width: 1024px) 50vw, 25vw"
-                    className="object-cover group-hover:scale-105 transition-transform duration-300"
-                  />
-                  {product.isVerified && (
-                    <span className="absolute top-2 left-2 sm:top-2.5 sm:left-2.5 px-2 py-0.5 sm:px-2.5 sm:py-1 rounded bg-[#0F2C23]/90 text-white text-[9px] sm:text-[10px] font-bold tracking-wide flex items-center gap-1 shadow-xs">
-                      <CheckCircle2 className="w-2.5 h-2.5 sm:w-3 sm:h-3 text-emerald-400" />
-                      Verified
-                    </span>
-                  )}
-                </div>
+                {featuredProducts.map((product) => (
+                  <div 
+                    key={product.id}
+                    onClick={() => setSelectedProduct(product)}
+                    className="w-[calc(50%-0.375rem)] min-w-[calc(50%-0.375rem)] shrink-0 snap-start sm:w-auto sm:min-w-0 sm:shrink bg-white rounded-2xl overflow-hidden border border-gray-200/80 shadow-2xs hover:shadow-md transition-all flex flex-col group cursor-pointer"
+                  >
+                    <div className="relative h-36 sm:h-48 w-full overflow-hidden bg-gray-100">
+                      <Image
+                        src={product.imageUrl || '/food_umkm.jpg'}
+                        alt={product.name}
+                        fill
+                        unoptimized
+                        sizes="(max-width: 640px) 50vw, (max-width: 1024px) 50vw, 25vw"
+                        className="object-cover group-hover:scale-105 transition-transform duration-300"
+                      />
+                      {product.isVerified && (
+                        <span className="absolute top-2 left-2 sm:top-2.5 sm:left-2.5 px-2 py-0.5 sm:px-2.5 sm:py-1 rounded bg-[#0F2C23]/90 text-white text-[9px] sm:text-[10px] font-bold tracking-wide flex items-center gap-1 shadow-xs">
+                          <CheckCircle2 className="w-2.5 h-2.5 sm:w-3 sm:h-3 text-emerald-400" />
+                          Verified
+                        </span>
+                      )}
+                    </div>
 
-                <div className="p-3 sm:p-4 flex-1 flex flex-col justify-between">
-                  <div>
-                    <span className="text-[10px] sm:text-[11px] font-semibold text-gray-400">
-                      {product.merchantName}
-                    </span>
-                    <h3 className="text-xs sm:text-sm font-bold text-gray-900 mt-0.5 sm:mt-1 line-clamp-2 leading-snug">
-                      {product.name}
-                    </h3>
-                    {product.description && (
-                      <div className="mt-1.5 sm:mt-2">
-                        <MarkdownContent content={product.description} className="text-[11px] sm:text-xs text-gray-600 line-clamp-2 leading-relaxed" />
-                        {product.description.length > 50 && (
-                          <button
-                            type="button"
-                            onClick={(e) => {
-                              e.stopPropagation();
-                              setSelectedProduct(product);
-                            }}
-                            className="mt-1 text-[10px] sm:text-[11px] font-semibold text-[#963E1B] hover:text-[#0F2C23] hover:underline inline-flex items-center gap-0.5 transition-colors focus:outline-none"
-                          >
-                            <span>Detail Selengkapnya</span>
-                            <ChevronRight className="w-3 h-3" />
-                          </button>
+                    <div className="p-3 sm:p-4 flex-1 flex flex-col justify-between">
+                      <div>
+                        <span className="text-[10px] sm:text-[11px] font-semibold text-gray-400">
+                          {product.merchantName}
+                        </span>
+                        <h3 className="text-xs sm:text-sm font-bold text-gray-900 mt-0.5 sm:mt-1 line-clamp-2 leading-snug">
+                          {product.name}
+                        </h3>
+                        {product.description && (
+                          <div className="mt-1.5 sm:mt-2">
+                            <MarkdownContent content={product.description} className="text-[11px] sm:text-xs text-gray-600 line-clamp-2 leading-relaxed" />
+                            {product.description.length > 50 && (
+                              <button
+                                type="button"
+                                onClick={(e) => {
+                                  e.stopPropagation();
+                                  setSelectedProduct(product);
+                                }}
+                                className="mt-1 text-[10px] sm:text-[11px] font-semibold text-[#963E1B] hover:text-[#0F2C23] hover:underline inline-flex items-center gap-0.5 transition-colors focus:outline-none"
+                              >
+                                <span>Detail Selengkapnya</span>
+                                <ChevronRight className="w-3 h-3" />
+                              </button>
+                            )}
+                          </div>
                         )}
                       </div>
-                    )}
-                  </div>
 
-                  <div className="mt-3 sm:mt-4 pt-2.5 sm:pt-3 border-t border-gray-100 flex items-center justify-between">
-                    <span className="text-xs sm:text-sm font-extrabold text-gray-900">
-                      {formatRupiah(product.price)}
-                    </span>
-                    <button
-                      type="button"
-                      onClick={(e) => {
-                        e.stopPropagation();
-                        setSelectedProduct(product);
-                      }}
-                      className="p-1.5 sm:p-2 rounded-lg bg-gray-100 text-gray-700 hover:bg-[#0F2C23] hover:text-white transition-colors"
-                      title="Lihat Detail Produk"
-                    >
-                      <ShoppingBag className="w-3.5 h-3.5 sm:w-4 sm:h-4" />
-                    </button>
+                      <div className="mt-3 sm:mt-4 pt-2.5 sm:pt-3 border-t border-gray-100 flex items-center justify-between">
+                        <span className="text-xs sm:text-sm font-extrabold text-gray-900">
+                          {formatRupiah(product.price)}
+                        </span>
+                        <button
+                          type="button"
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            setSelectedProduct(product);
+                          }}
+                          className="p-1.5 sm:p-2 rounded-lg bg-gray-100 text-gray-700 hover:bg-[#0F2C23] hover:text-white transition-colors"
+                          title="Lihat Detail Produk"
+                        >
+                          <ShoppingBag className="w-3.5 h-3.5 sm:w-4 sm:h-4" />
+                        </button>
+                      </div>
+                    </div>
                   </div>
-                </div>
+                ))}
               </div>
-              ))}
             </div>
-          </div>
           ) : (
             <div className="rounded-2xl border border-dashed border-gray-300 bg-white/70 px-6 py-12 text-center text-sm text-gray-500">
               Produk unggulan belum tersedia.

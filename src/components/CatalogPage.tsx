@@ -279,107 +279,107 @@ export const CatalogPage: React.FC<CatalogPageProps> = ({
             </div>
 
             {/* Featured Product Cards Carousel / Grid Container */}
-            <div className="relative z-10 group">
-              {/* Mobile-Only Side Navigation Arrow Buttons */}
+            <div className="relative z-10 w-full">
+              {/* Mobile-Only Outward Side Floating Arrow Buttons (Frosted Glass Transparent BG & Border) */}
               <button
                 type="button"
                 onClick={scrollFeaturedLeft}
                 aria-label="Scroll Kiri Produk Unggulan"
-                className="absolute -left-1 top-1/2 -translate-y-1/2 z-20 cursor-pointer rounded-full bg-white/95 border border-gray-200/90 p-2 text-[#0F2C23] shadow-md backdrop-blur-xs transition-all active:scale-90 sm:hidden"
+                className="absolute -left-3.5 top-1/2 -translate-y-1/2 z-20 cursor-pointer rounded-full bg-white/40 border border-white/50 backdrop-blur-md p-2 text-[#0F2C23] shadow-md hover:bg-white/70 active:scale-90 transition-all sm:hidden"
               >
-                <ChevronLeft className="w-5 h-5" />
+                <ChevronLeft className="w-4 h-4" />
               </button>
 
               <button
                 type="button"
                 onClick={scrollFeaturedRight}
                 aria-label="Scroll Kanan Produk Unggulan"
-                className="absolute -right-1 top-1/2 -translate-y-1/2 z-20 cursor-pointer rounded-full bg-white/95 border border-gray-200/90 p-2 text-[#0F2C23] shadow-md backdrop-blur-xs transition-all active:scale-90 sm:hidden"
+                className="absolute -right-3.5 top-1/2 -translate-y-1/2 z-20 cursor-pointer rounded-full bg-white/40 border border-white/50 backdrop-blur-md p-2 text-[#0F2C23] shadow-md hover:bg-white/70 active:scale-90 transition-all sm:hidden"
               >
-                <ChevronRight className="w-5 h-5" />
+                <ChevronRight className="w-4 h-4" />
               </button>
 
               <div
                 ref={featuredScrollRef}
                 className="flex overflow-x-auto snap-x snap-mandatory pb-3 gap-3 sm:gap-5 sm:grid sm:grid-cols-2 lg:grid-cols-4 sm:overflow-visible scrollbar-none"
               >
-              {featuredProducts.map((product) => (
-                <div
-                  key={product.id}
-                  onClick={() => setSelectedProduct(product)}
-                  className="w-[calc(50%-0.375rem)] min-w-[calc(50%-0.375rem)] shrink-0 snap-start sm:w-auto sm:min-w-0 sm:shrink bg-white/90 backdrop-blur-xs rounded-2xl overflow-hidden border border-amber-200/70 shadow-xs hover:shadow-xl hover:-translate-y-1.5 transition-all duration-300 flex flex-col group cursor-pointer"
-                >
-                  {/* Card Image Area with Custom Badges */}
-                  <div className="relative h-36 sm:h-44 w-full overflow-hidden bg-gray-100">
-                    <Image
-                      src={product.imageUrl || '/food_umkm.jpg'}
-                      alt={product.name}
-                      fill
-                      unoptimized
-                      sizes="(max-width: 640px) 50vw, (max-width: 1024px) 50vw, 25vw"
-                      className="object-cover group-hover:scale-105 transition-transform duration-500"
-                    />
-                    
-                    {/* Featured Star Badge */}
-                    <span className="absolute top-2.5 left-2.5 px-2 py-0.5 sm:px-2.5 sm:py-1 rounded-full bg-gradient-to-r from-amber-500 to-amber-600 text-white text-[9px] sm:text-[10px] font-extrabold tracking-wide flex items-center gap-1 shadow-md">
-                      <Star className="w-2.5 h-2.5 sm:w-3 sm:h-3 fill-white text-white" />
-                      Unggulan
-                    </span>
-
-                    {/* Verified Badge */}
-                    {product.isVerified && (
-                      <span className="absolute top-2.5 right-2.5 px-2 py-0.5 rounded bg-emerald-950/80 text-emerald-300 text-[9px] font-bold tracking-wide flex items-center gap-0.5 backdrop-blur-xs border border-emerald-500/30">
-                        <CheckCircle2 className="w-2.5 h-2.5 text-emerald-400" />
-                        Verified
+                {featuredProducts.map((product) => (
+                  <div
+                    key={product.id}
+                    onClick={() => setSelectedProduct(product)}
+                    className="w-[calc(50%-0.375rem)] min-w-[calc(50%-0.375rem)] shrink-0 snap-start sm:w-auto sm:min-w-0 sm:shrink bg-white/90 backdrop-blur-xs rounded-2xl overflow-hidden border border-amber-200/70 shadow-xs hover:shadow-xl hover:-translate-y-1.5 transition-all duration-300 flex flex-col group cursor-pointer"
+                  >
+                    {/* Card Image Area with Custom Badges */}
+                    <div className="relative h-36 sm:h-44 w-full overflow-hidden bg-gray-100">
+                      <Image
+                        src={product.imageUrl || '/food_umkm.jpg'}
+                        alt={product.name}
+                        fill
+                        unoptimized
+                        sizes="(max-width: 640px) 50vw, (max-width: 1024px) 50vw, 25vw"
+                        className="object-cover group-hover:scale-105 transition-transform duration-500"
+                      />
+                      
+                      {/* Featured Star Badge */}
+                      <span className="absolute top-2.5 left-2.5 px-2 py-0.5 sm:px-2.5 sm:py-1 rounded-full bg-gradient-to-r from-amber-500 to-amber-600 text-white text-[9px] sm:text-[10px] font-extrabold tracking-wide flex items-center gap-1 shadow-md">
+                        <Star className="w-2.5 h-2.5 sm:w-3 sm:h-3 fill-white text-white" />
+                        Unggulan
                       </span>
-                    )}
-                  </div>
 
-                  {/* Card Body */}
-                  <div className="p-3 sm:p-4 flex-1 flex flex-col justify-between bg-gradient-to-b from-white to-[#FAF9F6]">
-                    <div>
-                      <div className="flex items-center justify-between gap-1">
-                        <span className="truncate max-w-[120px] text-[10px] sm:text-[11px] font-medium text-gray-500">
-                          {product.merchantName}
+                      {/* Verified Badge */}
+                      {product.isVerified && (
+                        <span className="absolute top-2.5 right-2.5 px-2 py-0.5 rounded bg-emerald-950/80 text-emerald-300 text-[9px] font-bold tracking-wide flex items-center gap-0.5 backdrop-blur-xs border border-emerald-500/30">
+                          <CheckCircle2 className="w-2.5 h-2.5 text-emerald-400" />
+                          Verified
                         </span>
-                      </div>
-                      <h3 className="text-xs sm:text-sm font-bold text-gray-900 group-hover:text-[#0F2C23] transition-colors mt-1 line-clamp-1">
-                        {product.name}
-                      </h3>
-                      {product.description && (
-                        <div className="mt-1">
-                          <MarkdownContent content={product.description} className="text-[11px] sm:text-xs text-gray-600 line-clamp-2 leading-relaxed" />
-                        </div>
                       )}
                     </div>
 
-                    {/* Footer Price & Action CTA */}
-                    <div className="mt-3 pt-2.5 border-t border-gray-100/80 flex items-center justify-between gap-1">
-                      <div className="flex flex-col">
-                        <span className="text-[9px] text-gray-400 uppercase font-semibold">Harga</span>
-                        <span className="text-xs sm:text-sm font-black text-[#963E1B]">
-                          {formatRupiah(product.price)}
-                        </span>
+                    {/* Card Body */}
+                    <div className="p-3 sm:p-4 flex-1 flex flex-col justify-between bg-gradient-to-b from-white to-[#FAF9F6]">
+                      <div>
+                        <div className="flex items-center justify-between gap-1">
+                          <span className="truncate max-w-[120px] text-[10px] sm:text-[11px] font-medium text-gray-500">
+                            {product.merchantName}
+                          </span>
+                        </div>
+                        <h3 className="text-xs sm:text-sm font-bold text-gray-900 group-hover:text-[#0F2C23] transition-colors mt-1 line-clamp-1">
+                          {product.name}
+                        </h3>
+                        {product.description && (
+                          <div className="mt-1">
+                            <MarkdownContent content={product.description} className="text-[11px] sm:text-xs text-gray-600 line-clamp-2 leading-relaxed" />
+                          </div>
+                        )}
                       </div>
 
-                      <button
-                        type="button"
-                        onClick={(e) => {
-                          e.stopPropagation();
-                          setSelectedProduct(product);
-                        }}
-                        className="px-2.5 py-1.5 rounded-xl bg-[#0F2C23] text-white hover:bg-[#963E1B] text-[11px] font-semibold flex items-center gap-1 shadow-2xs transition-all group-hover:shadow-md cursor-pointer"
-                        title="Lihat Detail Produk"
-                      >
-                        <span>Detail</span>
-                        <ArrowRight className="w-3 h-3 transition-transform group-hover:translate-x-0.5" />
-                      </button>
+                      {/* Footer Price & Action CTA */}
+                      <div className="mt-3 pt-2.5 border-t border-gray-100/80 flex items-center justify-between gap-1">
+                        <div className="flex flex-col">
+                          <span className="text-[9px] text-gray-400 uppercase font-semibold">Harga</span>
+                          <span className="text-xs sm:text-sm font-black text-[#963E1B]">
+                            {formatRupiah(product.price)}
+                          </span>
+                        </div>
+
+                        <button
+                          type="button"
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            setSelectedProduct(product);
+                          }}
+                          className="px-2.5 py-1.5 rounded-xl bg-[#0F2C23] text-white hover:bg-[#963E1B] text-[11px] font-semibold flex items-center gap-1 shadow-2xs transition-all group-hover:shadow-md cursor-pointer"
+                          title="Lihat Detail Produk"
+                        >
+                          <span>Detail</span>
+                          <ArrowRight className="w-3 h-3 transition-transform group-hover:translate-x-0.5" />
+                        </button>
+                      </div>
                     </div>
                   </div>
-                </div>
-              ))}
+                ))}
+              </div>
             </div>
-          </div>
           </section>
         )}
 
