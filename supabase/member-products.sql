@@ -222,11 +222,13 @@ create or replace function public.save_product_with_gallery(
   p_product_id uuid,
   p_store_id uuid,
   p_name text,
+  p_category text,
   p_description text,
   p_whatsapp_number text,
   p_price numeric,
   p_is_available boolean,
   p_is_visible boolean,
+  p_is_featured boolean,
   p_images jsonb
 )
 returns uuid
@@ -244,6 +246,9 @@ declare
 begin
   if nullif(trim(p_name), '') is null or nullif(trim(p_description), '') is null then
     raise exception 'Nama dan deskripsi produk wajib diisi.';
+  end if;
+  if p_category not in ('Batik & Pakaian', 'Kerajinan Kayu', 'Tas & Anyaman', 'Kriya', 'Kue & Jajanan', 'Sambal & Bumbu', 'Keripik & Camilan', 'Makanan Olahan Lainnya') then
+    raise exception 'Kategori produk tidak valid.';
   end if;
   if p_price is not null and p_price < 0 then
     raise exception 'Harga produk tidak valid.';
@@ -280,9 +285,9 @@ begin
 
   if p_product_id is null then
     insert into public.products (
-      store_id, created_by, name, description, whatsapp_number, price, image_path, is_available, is_visible
+      store_id, created_by, name, category, description, whatsapp_number, price, image_path, is_available, is_visible, is_featured
     ) values (
-      p_store_id, auth.uid(), trim(p_name), trim(p_description), v_normalized_whatsapp, p_price, v_primary_path, p_is_available, p_is_visible
+      p_store_id, auth.uid(), trim(p_name), p_category, trim(p_description), v_normalized_whatsapp, p_price, v_primary_path, p_is_available, p_is_visible, p_is_featured
     ) returning id into v_product_id;
   else
     select store_id into v_existing_store_id
@@ -299,12 +304,14 @@ begin
     update public.products
     set
       name = trim(p_name),
+      category = p_category,
       description = trim(p_description),
       whatsapp_number = v_normalized_whatsapp,
       price = p_price,
       image_path = v_primary_path,
       is_available = p_is_available,
       is_visible = p_is_visible
+      ,is_featured = p_is_featured
     where id = p_product_id and store_id = p_store_id
     returning id into v_product_id;
 
@@ -332,5 +339,5 @@ begin
 end;
 $$;
 
-revoke all on function public.save_product_with_gallery(uuid, uuid, text, text, text, numeric, boolean, boolean, jsonb) from public;
-grant execute on function public.save_product_with_gallery(uuid, uuid, text, text, text, numeric, boolean, boolean, jsonb) to authenticated, service_role;
+revoke all on function public.save_product_with_gallery(uuid, uuid, text, text, text, text, numeric, boolean, boolean, boolean, jsonb) from public;
+grant execute on function public.save_product_with_gallery(uuid, uuid, text, text, text, text, numeric, boolean, boolean, boolean, jsonb) to authenticated, service_role;

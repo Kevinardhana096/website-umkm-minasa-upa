@@ -3,7 +3,6 @@
 import React, { useState, useMemo, useRef, useEffect } from 'react';
 import { Navbar } from './Navbar';
 import { HeroSection } from './HeroSection';
-import { CategoryFilter } from './CategoryFilter';
 import { ProductGrid } from './ProductGrid';
 import { ProductDetailModal } from './ProductDetailModal';
 import { Footer } from './Footer';
@@ -13,15 +12,7 @@ import { mockProducts } from '@/data/mockProducts';
 import type { CatalogStore, CatalogStoreOption, ProductRow } from '@/lib/products';
 import { deleteProduct, revalidatePublicCatalog, type NewProductInput } from '@/lib/store-service';
 import { getMemberCatalogData, mapMemberProduct, saveMemberProduct } from '@/lib/member-service';
-import { Product, CategoryOption } from '@/types/product';
-
-const categories: CategoryOption[] = [
-  'Semua',
-  'Batik & Pakaian',
-  'Kerajinan Kayu',
-  'Tas & Anyaman',
-  'Kriya',
-];
+import { Product } from '@/types/product';
 
 interface CatalogPageProps {
   initialProducts?: Product[];
@@ -41,9 +32,7 @@ export const CatalogPage: React.FC<CatalogPageProps> = ({
   const [products, setProducts] = useState(initialProducts);
   const [memberStores, setMemberStores] = useState(storeOptions);
   const [memberProductRows, setMemberProductRows] = useState<ProductRow[]>([]);
-  const hasCategories = products.some((product) => product.category);
   const [searchQuery, setSearchQuery] = useState('');
-  const [selectedCategory, setSelectedCategory] = useState<CategoryOption>('Semua');
   const [selectedProduct, setSelectedProduct] = useState<Product | null>(null);
   const [isMemberFormOpen, setIsMemberFormOpen] = useState(false);
   const [editingMemberProduct, setEditingMemberProduct] = useState<ProductRow | null>(null);
@@ -95,22 +84,9 @@ export const CatalogPage: React.FC<CatalogPageProps> = ({
     };
   }, [viewerRole]);
 
-  // Calculate counts per category
-  const categoryCounts = useMemo(() => {
-    const counts: Record<string, number> = {
-      Semua: products.length,
-    };
-    categories.slice(1).forEach((cat) => {
-      counts[cat] = products.filter((p) => p.category === cat).length;
-    });
-    return counts;
-  }, [products]);
-
-  // Filter products dynamically by search query and category
+  // Filter products dynamically by search query.
   const filteredProducts = useMemo(() => {
     return products.filter((product) => {
-      const matchesCategory =
-        selectedCategory === 'Semua' || product.category === selectedCategory;
       const matchesSearch =
         searchQuery.trim() === '' ||
         product.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
@@ -118,9 +94,9 @@ export const CatalogPage: React.FC<CatalogPageProps> = ({
         product.location.toLowerCase().includes(searchQuery.toLowerCase()) ||
         product.description.toLowerCase().includes(searchQuery.toLowerCase());
 
-      return matchesCategory && matchesSearch;
+      return matchesSearch;
     });
-  }, [products, searchQuery, selectedCategory]);
+  }, [products, searchQuery]);
 
   const handleContactSellerClick = () => {
     if (!store?.whatsappNumber) {
@@ -237,21 +213,9 @@ export const CatalogPage: React.FC<CatalogPageProps> = ({
 
         {/* Product Catalog Section Anchor */}
         <div id="katalog-produk" className="scroll-mt-24 pt-4">
-          {/* Category Pills Filter */}
-          {hasCategories && (
-            <div className="mb-4">
-              <CategoryFilter
-                categories={categories}
-                selectedCategory={selectedCategory}
-                onSelectCategory={setSelectedCategory}
-                categoryCounts={categoryCounts}
-              />
-            </div>
-          )}
-
           {/* Product Cards Grid with Pagination */}
           <ProductGrid
-            key={`${searchQuery}:${selectedCategory}`}
+            key={searchQuery}
             products={filteredProducts}
             onDetailClick={(product) => setSelectedProduct(product)}
             canManageProduct={(product) => viewerRole === 'anggota' && product.createdBy === viewerUserId}

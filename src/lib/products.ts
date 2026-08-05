@@ -1,4 +1,4 @@
-import type { Product } from "@/types/product";
+import type { Product, ProductCategory } from "@/types/product";
 
 export const MAX_PRODUCT_IMAGES = 5;
 
@@ -7,6 +7,7 @@ export interface ProductRow {
   store_id: string;
   created_by: string | null;
   name: string;
+  category: ProductCategory | null;
   description: string;
   image_path: string | null;
   product_images: ProductImageRow[];
@@ -14,6 +15,7 @@ export interface ProductRow {
   price: number | string | null;
   is_available: boolean;
   is_visible: boolean;
+  is_featured: boolean;
   created_at: string;
   updated_at: string;
   store_name?: string;
@@ -33,7 +35,7 @@ export interface ProductQueryRow extends Omit<ProductRow, "product_images"> {
   product_images: ProductImageRow[] | null;
 }
 
-export const PRODUCT_SELECT = "id, store_id, created_by, name, description, image_path, whatsapp_number, price, is_available, is_visible, created_at, updated_at, product_images(id, product_id, image_path, sort_order, is_primary, created_at, updated_at)";
+export const PRODUCT_SELECT = "id, store_id, created_by, name, category, description, image_path, whatsapp_number, price, is_available, is_visible, is_featured, created_at, updated_at, product_images(id, product_id, image_path, sort_order, is_primary, created_at, updated_at)";
 
 export function normalizeProductRow(row: ProductQueryRow): ProductRow {
   const images = [...(row.product_images ?? [])].sort((a, b) => a.sort_order - b.sort_order);
@@ -110,7 +112,7 @@ export function mapProductRow(
     merchantName: store.name || store.seller_name,
     merchantAvatar: undefined,
     location: "Indonesia",
-    category: undefined,
+    category: row.category ?? "Makanan Olahan Lainnya",
     description: row.description,
     fullDescription: row.description,
     price: row.price === null ? null : Number(row.price),
@@ -121,6 +123,7 @@ export function mapProductRow(
     whatsappNumber: row.whatsapp_number || store.whatsapp_number,
     isAvailable: row.is_available,
     isVisible: row.is_visible,
+    isFeatured: row.is_featured,
   };
 }
 

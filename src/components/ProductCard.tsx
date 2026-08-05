@@ -5,7 +5,7 @@ import Image from 'next/image';
 import { Product } from '@/types/product';
 import { formatRupiah } from '@/lib/products';
 import { MarkdownContent } from '@/components/MarkdownContent';
-import { ShieldCheck, MapPin, Eye, Clock, CheckCircle2, Edit, Trash2, ChevronRight } from 'lucide-react';
+import { MapPin, Eye, Clock, CheckCircle2, Edit, Trash2, ChevronRight } from 'lucide-react';
 
 interface ProductCardProps {
   product: Product;
@@ -56,13 +56,6 @@ export const ProductCard: React.FC<ProductCardProps> = ({ product, onDetailClick
           {product.category ?? 'Produk'}
         </div>
 
-        {/* Verified SME Badge */}
-        {product.isVerified && (
-          <div className="absolute top-2 left-2 sm:top-3 sm:left-3 bg-amber-50/95 backdrop-blur-md border border-amber-200/90 px-1.5 py-0.5 sm:px-2.5 sm:py-1 rounded-full flex items-center gap-1 shadow-xs">
-            <ShieldCheck className="w-3 h-3 sm:w-3.5 sm:h-3.5 text-amber-600 shrink-0" />
-            <span className="text-[9px] sm:text-[11px] font-bold text-amber-900 tracking-tight">Verified SME</span>
-          </div>
-        )}
       </div>
 
       {/* Card Content */}

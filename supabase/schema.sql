@@ -26,17 +26,20 @@ create table if not exists public.products (
   id uuid primary key default gen_random_uuid(),
   store_id uuid not null references public.stores(id) on delete cascade,
   name text not null,
+  category text not null default 'Makanan Olahan Lainnya' check (category in ('Batik & Pakaian', 'Kerajinan Kayu', 'Tas & Anyaman', 'Kriya', 'Kue & Jajanan', 'Sambal & Bumbu', 'Keripik & Camilan', 'Makanan Olahan Lainnya')),
   description text not null default '',
   image_path text,
   price numeric(12, 2) check (price is null or price >= 0),
   is_available boolean not null default true,
   is_visible boolean not null default true,
+  is_featured boolean not null default false,
   created_at timestamptz not null default now(),
   updated_at timestamptz not null default now()
 );
 
 create index if not exists products_store_id_idx on public.products(store_id);
 create index if not exists products_visible_idx on public.products(is_visible, is_available);
+create index if not exists products_featured_idx on public.products(is_featured, is_visible);
 
 create or replace function public.handle_new_user()
 returns trigger

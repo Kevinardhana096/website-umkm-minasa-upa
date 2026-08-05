@@ -1,3 +1,16 @@
+export const PRODUCT_CATEGORIES = [
+  'Batik & Pakaian',
+  'Kerajinan Kayu',
+  'Tas & Anyaman',
+  'Kriya',
+  'Kue & Jajanan',
+  'Sambal & Bumbu',
+  'Keripik & Camilan',
+  'Makanan Olahan Lainnya',
+] as const;
+
+export type ProductCategory = (typeof PRODUCT_CATEGORIES)[number];
+
 export interface Product {
   id: string;
   storeId?: string;
@@ -6,7 +19,7 @@ export interface Product {
   merchantName: string;
   merchantAvatar?: string;
   location: string;
-  category?: 'Batik & Pakaian' | 'Kerajinan Kayu' | 'Tas & Anyaman' | 'Kriya';
+  category?: ProductCategory;
   description: string;
   fullDescription?: string;
   specifications?: string[];
@@ -21,6 +34,7 @@ export interface Product {
   whatsappNumber: string;
   isAvailable?: boolean;
   isVisible?: boolean;
+  isFeatured?: boolean;
 }
 
-export type CategoryOption = 'Semua' | 'Batik & Pakaian' | 'Kerajinan Kayu' | 'Tas & Anyaman' | 'Kriya';
+export type CategoryOption = 'Semua' | ProductCategory;

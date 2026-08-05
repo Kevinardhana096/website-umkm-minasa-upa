@@ -4,6 +4,7 @@ import { createClient } from "@/lib/supabase/server";
 import { revalidatePublicCatalogCache } from "@/lib/catalog";
 import { MAX_PRODUCT_IMAGES, normalizeProductRow, normalizeProductRows, PRODUCT_SELECT, type ProductQueryRow } from "@/lib/products";
 import { validateWhatsappNumber } from "@/lib/whatsapp";
+import { PRODUCT_CATEGORIES } from "@/types/product";
 
 export const dynamic = "force-dynamic";
 
@@ -203,6 +204,7 @@ async function updateProduct(
 
   const productId = getString(formData.get("id") ?? undefined);
   const name = getString(formData.get("name") ?? undefined);
+  const category = getString(formData.get("category") ?? undefined);
   const description = getString(formData.get("description") ?? undefined);
   let whatsappNumber = "";
   try {
@@ -213,16 +215,19 @@ async function updateProduct(
   const priceInput = getString(formData.get("price") ?? undefined);
   const isAvailableInput = getString(formData.get("is_available") ?? undefined);
   const isVisibleInput = getString(formData.get("is_visible") ?? undefined);
+  const isFeaturedInput = getString(formData.get("is_featured") ?? undefined);
 
   if (!productId) return jsonError("Produk wajib dipilih.", 400);
   if (name.length < 1) return jsonError("Nama produk wajib diisi.", 400);
+  if (!PRODUCT_CATEGORIES.includes(category as (typeof PRODUCT_CATEGORIES)[number])) return jsonError("Kategori produk tidak valid.", 400);
   if (description.length < 1) return jsonError("Deskripsi produk wajib diisi.", 400);
-  if (!["true", "false"].includes(isAvailableInput) || !["true", "false"].includes(isVisibleInput)) {
+  if (!["true", "false"].includes(isAvailableInput) || !["true", "false"].includes(isVisibleInput) || !["true", "false"].includes(isFeaturedInput)) {
     return jsonError("Status produk tidak valid.", 400);
   }
 
   const isAvailable = isAvailableInput === "true";
   const isVisible = isVisibleInput === "true";
+  const isFeatured = isFeaturedInput === "true";
 
   let price: number | null = null;
   if (priceInput) {
@@ -255,11 +260,13 @@ async function updateProduct(
       p_product_id: productId,
       p_store_id: existingProduct.store_id,
       p_name: name,
+      p_category: category,
       p_description: description,
       p_whatsapp_number: whatsappNumber,
       p_price: price,
       p_is_available: isAvailable,
       p_is_visible: isVisible,
+      p_is_featured: isFeatured,
       p_images: imageResult.resolved.map((image) => ({
         image_path: image.imagePath,
         is_primary: image.isPrimary,
@@ -293,6 +300,7 @@ async function updateProduct(
       image_changed: existingProduct.image_path !== primaryPath || imageResult.resolved.length !== imageResult.existing.product_images.length,
       is_available: isAvailable,
       is_visible: isVisible,
+      is_featured: isFeatured,
     });
     revalidatePublicCatalogCache();
 

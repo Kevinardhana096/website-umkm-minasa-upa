@@ -11,7 +11,6 @@ import {
   MessageSquare, 
   Bot, 
   Shapes, 
-  ShieldCheck, 
   Clock, 
   Sparkles,
   Maximize2,
@@ -231,14 +230,7 @@ export const ProductDetailModal: React.FC<ProductDetailModalProps> = ({
                     )}
                   </div>
                   <div>
-                    <div className="flex items-center gap-1.5">
-                      <p className="text-sm font-bold text-gray-900 leading-tight">{product.merchantName}</p>
-                      {product.isVerified && (
-                        <span title="Terverifikasi UMKM">
-                          <ShieldCheck className="w-4 h-4 text-[#963E1B] shrink-0" />
-                        </span>
-                      )}
-                    </div>
+                    <p className="text-sm font-bold text-gray-900 leading-tight">{product.merchantName}</p>
                     <div className="flex items-center gap-1 text-xs text-gray-500 mt-0.5">
                       <MapPin className="w-3.5 h-3.5 text-gray-400" />
                       <span>{product.location}</span>
@@ -246,9 +238,6 @@ export const ProductDetailModal: React.FC<ProductDetailModalProps> = ({
                   </div>
                 </div>
 
-                <div className="px-2.5 py-1 rounded-full bg-white border border-amber-200/60 text-[11px] font-semibold text-amber-800 shadow-2xs">
-                  Pengrajin Lokal
-                </div>
               </div>
 
               {/* Product Title */}

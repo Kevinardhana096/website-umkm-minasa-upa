@@ -39,8 +39,8 @@ export const HeroSection: React.FC<HeroSectionProps> = ({
         </h1>
 
         <p className="mt-2.5 sm:mt-4 text-xs sm:text-base text-gray-600 leading-relaxed max-w-xl">
-          Jelajahi koleksi kerajinan tangan autentik dan produk premium dari pengrajin lokal. 
-          Hubungi penjual secara langsung untuk pesanan khusus atau pembelian grosir.
+          Jelajahi beragam produk olahan makanan dan kerajinan lokal dari UMKM Wanita Tangguh Minasa Upa.
+          Hubungi penjual secara langsung untuk pemesanan dan informasi produk.
         </p>
 
         {/* Search Bar Input Container */}
@@ -55,7 +55,7 @@ export const HeroSection: React.FC<HeroSectionProps> = ({
             type="text"
             value={searchQuery}
             onChange={(e) => onSearchChange(e.target.value)}
-            placeholder="Cari batik, kerajinan kayu, tas rotan..."
+            placeholder="Cari produk, makanan, atau kerajinan..."
             className="w-full text-xs sm:text-sm text-gray-800 placeholder-gray-400 bg-transparent focus:outline-none py-1.5 sm:py-2 font-medium"
           />
           <button

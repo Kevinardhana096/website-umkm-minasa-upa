@@ -1,5 +1,6 @@
 import { createClient } from "@/lib/supabase/server";
 import { normalizeProductRows, PRODUCT_SELECT, type ProductImageRow, type ProductQueryRow } from "@/lib/products";
+import type { ProductCategory } from "@/types/product";
 
 export interface AdminStoreRow {
   id: string;
@@ -33,6 +34,7 @@ export interface AdminProductSummary {
   store_name: string;
   store_is_active: boolean;
   name: string;
+  category: ProductCategory | null;
   description: string;
   image_path: string | null;
   product_images: ProductImageRow[];
@@ -40,6 +42,7 @@ export interface AdminProductSummary {
   price: number | string | null;
   is_available: boolean;
   is_visible: boolean;
+  is_featured: boolean;
   created_at: string;
   updated_at: string;
 }

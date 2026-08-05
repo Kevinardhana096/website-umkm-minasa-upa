@@ -100,11 +100,13 @@ export function AdminDashboardClient({ initialData }: AdminDashboardClientProps)
       formData.append("resource", "product");
       formData.append("id", editingProduct.id);
       formData.append("name", input.name);
+      formData.append("category", input.category);
       formData.append("description", input.description);
       formData.append("whatsapp_number", input.whatsappNumber);
       formData.append("price", input.price === null ? "" : String(input.price));
       formData.append("is_available", String(input.isAvailable));
       formData.append("is_visible", String(input.isVisible));
+      formData.append("is_featured", String(input.isFeatured));
       formData.append("images", JSON.stringify((input.images ?? []).map((image) => ({
         id: image.id,
         image_path: image.imagePath,
@@ -323,6 +325,7 @@ export function AdminDashboardClient({ initialData }: AdminDashboardClientProps)
         product={editingProduct}
         isOpen={Boolean(editingProduct)}
         isSaving={Boolean(editingProduct && pendingCatalogAction === `${editingProduct.id}:save`)}
+        allowFeatured
         onClose={() => setEditingProduct(null)}
         onSave={handleSaveProduct}
       />

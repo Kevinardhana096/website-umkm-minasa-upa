@@ -3,6 +3,7 @@ import { ArrowDown, ArrowUp, ImagePlus, Star, Trash2, X } from "lucide-react";
 import { useState, type FormEvent, type ReactNode } from "react";
 import { MAX_PRODUCT_IMAGES, toPublicImageUrl, type CatalogStoreOption, type ProductRow } from "@/lib/products";
 import type { NewProductInput, ProductImageInput } from "@/lib/store-service";
+import { PRODUCT_CATEGORIES, type ProductCategory } from "@/types/product";
 
 interface ProductFormModalProps {
   isOpen: boolean;
@@ -13,6 +14,7 @@ interface ProductFormModalProps {
   defaultStoreName?: string;
   storeOptions?: CatalogStoreOption[];
   defaultWhatsappNumber?: string;
+  allowFeatured?: boolean;
   onClose: () => void;
   onSave: (input: NewProductInput) => Promise<void>;
 }
@@ -24,6 +26,7 @@ interface FormImage extends ProductImageInput {
 interface FormState {
   storeName: string;
   name: string;
+  category: ProductCategory;
   description: string;
   price: string;
   whatsappNumber: string;
@@ -31,6 +34,7 @@ interface FormState {
   imageUrlInput: string;
   isAvailable: boolean;
   isVisible: boolean;
+  isFeatured: boolean;
 }
 
 function previewForPath(imagePath: string) {
@@ -56,6 +60,7 @@ function formFromProduct(product?: ProductRow | null, defaultStoreName = "", def
   return {
     storeName: product?.store_name ?? defaultStoreName,
     name: product?.name ?? "",
+    category: product?.category ?? "Makanan Olahan Lainnya",
     description: product?.description ?? "",
     price: product?.price === null || product?.price === undefined ? "" : String(product.price),
     whatsappNumber: product?.whatsapp_number ?? defaultWhatsappNumber,
@@ -63,6 +68,7 @@ function formFromProduct(product?: ProductRow | null, defaultStoreName = "", def
     imageUrlInput: "",
     isAvailable: product?.is_available ?? true,
     isVisible: product?.is_visible ?? true,
+    isFeatured: product?.is_featured ?? false,
   };
 }
 
@@ -75,6 +81,7 @@ export function ProductFormModal({
   defaultStoreName = "",
   storeOptions = [],
   defaultWhatsappNumber = "",
+  allowFeatured = false,
   onClose,
   onSave,
 }: ProductFormModalProps) {
@@ -163,6 +170,7 @@ export function ProductFormModal({
       id: product?.id,
       storeName: form.storeName.trim() || undefined,
       name: form.name.trim(),
+      category: form.category,
       description: form.description.trim(),
       price: form.price ? Number(form.price) : null,
       whatsappNumber: form.whatsappNumber.trim(),
@@ -174,6 +182,7 @@ export function ProductFormModal({
       })),
       isAvailable: form.isAvailable,
       isVisible: form.isVisible,
+      isFeatured: allowFeatured ? form.isFeatured : false,
     });
     setForm(formFromProduct(product, defaultStoreName, defaultWhatsappNumber));
   };
@@ -214,6 +223,12 @@ export function ProductFormModal({
 
           <Field label="Nama Produk *">
             <input required value={form.name} onChange={(event) => setForm({ ...form, name: event.target.value })} placeholder="Contoh: Kerajinan Kain Tenun Minasa Upa" className="w-full rounded-xl border border-gray-200 bg-white px-3.5 py-2.5 outline-none transition-all placeholder:text-gray-400 focus:border-[#0F2C23] focus:ring-2 focus:ring-[#0F2C23]/15" />
+          </Field>
+
+          <Field label="Kategori Produk *">
+            <select required value={form.category} onChange={(event) => setForm({ ...form, category: event.target.value as ProductCategory })} className="w-full rounded-xl border border-gray-200 bg-white px-3.5 py-2.5 outline-none transition-all focus:border-[#0F2C23] focus:ring-2 focus:ring-[#0F2C23]/15">
+              {PRODUCT_CATEGORIES.map((category) => <option key={category} value={category}>{category}</option>)}
+            </select>
           </Field>
 
           <Field label="Deskripsi Produk *">
@@ -267,6 +282,7 @@ export function ProductFormModal({
           <div className="flex flex-wrap gap-5 pt-1 text-xs font-semibold text-gray-700">
             <label className="flex cursor-pointer items-center gap-2"><input type="checkbox" checked={form.isAvailable} onChange={(event) => setForm({ ...form, isAvailable: event.target.checked })} className="h-4 w-4 rounded border-gray-300 text-[#0F2C23] focus:ring-[#0F2C23]" /> Stok Tersedia</label>
             <label className="flex cursor-pointer items-center gap-2"><input type="checkbox" checked={form.isVisible} onChange={(event) => setForm({ ...form, isVisible: event.target.checked })} className="h-4 w-4 rounded border-gray-300 text-[#0F2C23] focus:ring-[#0F2C23]" /> Tampilkan di Katalog Publik</label>
+            {allowFeatured && <label className="flex cursor-pointer items-center gap-2"><input type="checkbox" checked={form.isFeatured} onChange={(event) => setForm({ ...form, isFeatured: event.target.checked })} className="h-4 w-4 rounded border-gray-300 text-[#0F2C23] focus:ring-[#0F2C23]" /> Tampilkan sebagai Produk Unggulan</label>}
           </div>
 
           <div className="mt-6 flex flex-col-reverse gap-2 border-t border-gray-100 pt-4 sm:flex-row sm:items-center sm:justify-end sm:gap-3">

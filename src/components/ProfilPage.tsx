@@ -79,7 +79,7 @@ export const ProfilPage: React.FC<ProfilPageProps> = ({ store = null, products =
     window.open(waUrl, '_blank');
   };
 
-  const featuredProducts = products.slice(0, 4);
+  const featuredProducts = products.filter((product) => product.isFeatured === true).slice(0, 4);
 
   return (
     <div className="min-h-screen flex flex-col bg-[#FAF9F6] text-gray-900 font-sans selection:bg-[#F4EBD9]">
@@ -275,12 +275,6 @@ export const ProfilPage: React.FC<ProfilPageProps> = ({ store = null, products =
                     sizes="(max-width: 640px) 100vw, (max-width: 1024px) 50vw, 25vw"
                     className="object-cover group-hover:scale-105 transition-transform duration-300"
                   />
-                  {product.isVerified && (
-                    <span className="absolute top-2.5 left-2.5 px-2.5 py-1 rounded bg-[#0F2C23]/90 text-white text-[10px] font-bold tracking-wide flex items-center gap-1 shadow-xs">
-                      <CheckCircle2 className="w-3 h-3 text-emerald-400" />
-                      Verified UMKM
-                    </span>
-                  )}
                 </div>
 
                 <div className="p-4 flex-1 flex flex-col justify-between">
