@@ -264,48 +264,45 @@ export const CatalogPage: React.FC<CatalogPageProps> = ({
             <div className="absolute -top-12 -right-12 w-40 h-40 bg-amber-200/30 rounded-full blur-2xl pointer-events-none" />
             <div className="absolute -bottom-12 -left-12 w-40 h-40 bg-[#0F2C23]/5 rounded-full blur-2xl pointer-events-none" />
 
-            {/* Header with Navigation Controls */}
-            <div className="relative z-10 flex flex-col sm:flex-row sm:items-end justify-between gap-4 mb-7">
-              <div className="flex flex-col items-center sm:items-start text-center sm:text-left max-w-2xl">
-                <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-[#0F2C23] text-amber-300 text-[11px] font-bold tracking-wide shadow-xs mb-2">
-                  <Sparkles className="w-3.5 h-3.5 text-amber-400 fill-amber-400" />
-                  REKOMENDASI PILIHAN
-                </span>
-                <h2 className="text-2xl sm:text-3xl font-extrabold text-[#0F2C23] tracking-tight">
-                  Produk Unggulan UMKM
-                </h2>
-                <p className="mt-1 text-xs sm:text-sm text-gray-600">
-                  Pilihan olahan khas terbaik buatan ibu-ibu Kelompok UMKM Wanita Tangguh.
-                </p>
-              </div>
-
-              {/* Navigation Arrow Controls for Horizontal Scroll */}
-              <div className="flex items-center justify-center sm:justify-end gap-2 shrink-0">
-                <span className="text-xs font-semibold text-gray-500 sm:hidden">Geser produk</span>
-                <button
-                  type="button"
-                  onClick={scrollFeaturedLeft}
-                  aria-label="Scroll Kiri Produk Unggulan"
-                  className="p-2 rounded-full bg-white border border-gray-200 text-gray-700 shadow-xs hover:bg-[#0F2C23] hover:text-white hover:border-[#0F2C23] active:scale-95 transition-all cursor-pointer"
-                >
-                  <ChevronLeft className="w-4 h-4" />
-                </button>
-                <button
-                  type="button"
-                  onClick={scrollFeaturedRight}
-                  aria-label="Scroll Kanan Produk Unggulan"
-                  className="p-2 rounded-full bg-white border border-gray-200 text-gray-700 shadow-xs hover:bg-[#0F2C23] hover:text-white hover:border-[#0F2C23] active:scale-95 transition-all cursor-pointer"
-                >
-                  <ChevronRight className="w-4 h-4" />
-                </button>
-              </div>
+            {/* Header */}
+            <div className="relative z-10 text-center max-w-2xl mx-auto mb-7">
+              <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-[#0F2C23] text-amber-300 text-[11px] font-bold tracking-wide shadow-xs mb-2">
+                <Sparkles className="w-3.5 h-3.5 text-amber-400 fill-amber-400" />
+                REKOMENDASI PILIHAN
+              </span>
+              <h2 className="text-2xl sm:text-3xl font-extrabold text-[#0F2C23] tracking-tight">
+                Produk Unggulan UMKM
+              </h2>
+              <p className="mt-1 text-xs sm:text-sm text-gray-600">
+                Pilihan olahan khas terbaik buatan ibu-ibu Kelompok UMKM Wanita Tangguh.
+              </p>
             </div>
 
-            {/* Featured Product Cards Carousel / Grid */}
-            <div
-              ref={featuredScrollRef}
-              className="relative z-10 flex overflow-x-auto snap-x snap-mandatory pb-3 gap-3 sm:gap-5 sm:grid sm:grid-cols-2 lg:grid-cols-4 sm:overflow-visible scrollbar-none"
-            >
+            {/* Featured Product Cards Carousel / Grid Container */}
+            <div className="relative z-10 group">
+              {/* Mobile-Only Side Navigation Arrow Buttons */}
+              <button
+                type="button"
+                onClick={scrollFeaturedLeft}
+                aria-label="Scroll Kiri Produk Unggulan"
+                className="absolute -left-1 top-1/2 -translate-y-1/2 z-20 cursor-pointer rounded-full bg-white/95 border border-gray-200/90 p-2 text-[#0F2C23] shadow-md backdrop-blur-xs transition-all active:scale-90 sm:hidden"
+              >
+                <ChevronLeft className="w-5 h-5" />
+              </button>
+
+              <button
+                type="button"
+                onClick={scrollFeaturedRight}
+                aria-label="Scroll Kanan Produk Unggulan"
+                className="absolute -right-1 top-1/2 -translate-y-1/2 z-20 cursor-pointer rounded-full bg-white/95 border border-gray-200/90 p-2 text-[#0F2C23] shadow-md backdrop-blur-xs transition-all active:scale-90 sm:hidden"
+              >
+                <ChevronRight className="w-5 h-5" />
+              </button>
+
+              <div
+                ref={featuredScrollRef}
+                className="flex overflow-x-auto snap-x snap-mandatory pb-3 gap-3 sm:gap-5 sm:grid sm:grid-cols-2 lg:grid-cols-4 sm:overflow-visible scrollbar-none"
+              >
               {featuredProducts.map((product) => (
                 <div
                   key={product.id}
@@ -382,6 +379,7 @@ export const CatalogPage: React.FC<CatalogPageProps> = ({
                 </div>
               ))}
             </div>
+          </div>
           </section>
         )}
 

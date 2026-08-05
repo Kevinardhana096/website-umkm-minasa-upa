@@ -296,47 +296,42 @@ export const ProfilPage: React.FC<ProfilPageProps> = ({ store = null, products =
            ========================================================================= */}
         <section className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
           
-          {/* Header with Navigation Controls */}
-          <div className="flex flex-col sm:flex-row sm:items-end justify-between gap-4 mb-8 sm:mb-12">
-            <div className="text-center sm:text-left max-w-2xl">
-              <h2 className="text-2xl sm:text-4xl font-bold text-gray-900 tracking-tight">
-                Produk Unggulan
-              </h2>
-              <p className="mt-2 text-sm sm:text-base text-gray-600">
-                Produk olahan yang dikembangkan oleh anggota Kelompok UMKM Wanita Tangguh Minasa Upa.
-              </p>
-            </div>
-
-            {/* Navigation Arrow Controls for Horizontal Scroll */}
-            {featuredProducts.length > 0 && (
-              <div className="flex items-center justify-center sm:justify-end gap-2 shrink-0">
-                <span className="text-xs font-semibold text-gray-400 sm:hidden">Geser produk</span>
-                <button
-                  type="button"
-                  onClick={scrollFeaturedLeft}
-                  aria-label="Scroll Produk Unggulan ke Kiri"
-                  className="p-2.5 rounded-full bg-white border border-gray-200 text-gray-700 shadow-xs hover:bg-[#0F2C23] hover:text-white hover:border-[#0F2C23] active:scale-95 transition-all cursor-pointer"
-                >
-                  <ChevronLeft className="w-4 h-4 sm:w-5 sm:h-5" />
-                </button>
-                <button
-                  type="button"
-                  onClick={scrollFeaturedRight}
-                  aria-label="Scroll Produk Unggulan ke Kanan"
-                  className="p-2.5 rounded-full bg-white border border-gray-200 text-gray-700 shadow-xs hover:bg-[#0F2C23] hover:text-white hover:border-[#0F2C23] active:scale-95 transition-all cursor-pointer"
-                >
-                  <ChevronRight className="w-4 h-4 sm:w-5 sm:h-5" />
-                </button>
-              </div>
-            )}
+          {/* Header */}
+          <div className="text-center max-w-2xl mx-auto mb-8 sm:mb-12">
+            <h2 className="text-2xl sm:text-4xl font-bold text-gray-900 tracking-tight">
+              Produk Unggulan
+            </h2>
+            <p className="mt-2 text-sm sm:text-base text-gray-600">
+              Produk olahan yang dikembangkan oleh anggota Kelompok UMKM Wanita Tangguh Minasa Upa.
+            </p>
           </div>
 
           {/* Product Grid / Horizontal Carousel Container */}
           {featuredProducts.length > 0 ? (
-            <div
-              ref={featuredScrollRef}
-              className="flex overflow-x-auto snap-x snap-mandatory pb-4 gap-3 sm:gap-6 sm:grid sm:grid-cols-2 lg:grid-cols-4 sm:overflow-visible scrollbar-none"
-            >
+            <div className="relative group">
+              {/* Mobile-Only Side Navigation Arrow Buttons */}
+              <button
+                type="button"
+                onClick={scrollFeaturedLeft}
+                aria-label="Scroll Produk Unggulan ke Kiri"
+                className="absolute -left-2 top-1/2 -translate-y-1/2 z-20 cursor-pointer rounded-full bg-white/95 border border-gray-200/90 p-2 text-[#0F2C23] shadow-md backdrop-blur-xs transition-all active:scale-90 sm:hidden"
+              >
+                <ChevronLeft className="w-5 h-5" />
+              </button>
+
+              <button
+                type="button"
+                onClick={scrollFeaturedRight}
+                aria-label="Scroll Produk Unggulan ke Kanan"
+                className="absolute -right-2 top-1/2 -translate-y-1/2 z-20 cursor-pointer rounded-full bg-white/95 border border-gray-200/90 p-2 text-[#0F2C23] shadow-md backdrop-blur-xs transition-all active:scale-90 sm:hidden"
+              >
+                <ChevronRight className="w-5 h-5" />
+              </button>
+
+              <div
+                ref={featuredScrollRef}
+                className="flex overflow-x-auto snap-x snap-mandatory pb-4 gap-3 sm:gap-6 sm:grid sm:grid-cols-2 lg:grid-cols-4 sm:overflow-visible scrollbar-none"
+              >
               {featuredProducts.map((product) => (
               <div 
                 key={product.id}
@@ -408,6 +403,7 @@ export const ProfilPage: React.FC<ProfilPageProps> = ({ store = null, products =
               </div>
               ))}
             </div>
+          </div>
           ) : (
             <div className="rounded-2xl border border-dashed border-gray-300 bg-white/70 px-6 py-12 text-center text-sm text-gray-500">
               Produk unggulan belum tersedia.
