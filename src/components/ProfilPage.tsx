@@ -14,6 +14,7 @@ import {
 import { Navbar } from './Navbar';
 import { Footer } from './Footer';
 import { FloatingChatWidget, FloatingChatWidgetRef } from './FloatingChatWidget';
+import { VillageLocationSection } from './VillageLocationSection';
 import { formatRupiah, type CatalogStore } from '@/lib/products';
 import type { Product } from '@/types/product';
 
@@ -83,7 +84,7 @@ export const ProfilPage: React.FC<ProfilPageProps> = ({ store = null, products =
       <Navbar transparentAtTop onContactClick={handleContactSellerClick} />
 
       {/* Main Body */}
-      <main className="flex-1 pb-20">
+      <main className="flex-1 pb-4 sm:pb-6">
         
         {/* =========================================================================
             HERO HEADER WITH HORIZONTAL AUTO-SLIDING CAROUSEL
@@ -320,6 +321,11 @@ export const ProfilPage: React.FC<ProfilPageProps> = ({ store = null, products =
           </div>
 
         </section>
+
+        {/* =========================================================================
+            PETA LOKASI DESA MINASA UPA
+           ========================================================================= */}
+        <VillageLocationSection />
 
       </main>
 
