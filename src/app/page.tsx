@@ -6,10 +6,11 @@ export const revalidate = 60;
 
 export default async function Home() {
   const catalog = await getPublicCatalog();
+  const demoProducts = process.env.NODE_ENV !== "production" && catalog === null ? mockProducts : [];
 
   return (
     <ProfilPage
-      products={catalog?.products ?? (catalog === null ? mockProducts : [])}
+      products={catalog?.products ?? demoProducts}
       store={catalog?.store ?? null}
     />
   );

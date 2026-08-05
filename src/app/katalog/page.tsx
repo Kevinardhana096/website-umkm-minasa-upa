@@ -27,10 +27,11 @@ export default async function Katalog() {
   // Catalog and session data are independent, so start both network requests
   // together instead of serializing them on every navigation.
   const [catalog, viewer] = await Promise.all([getPublicCatalog(), getViewer()]);
+  const demoProducts = process.env.NODE_ENV !== 'production' && catalog === null ? mockProducts : [];
 
   return (
     <CatalogPage
-      initialProducts={catalog?.products ?? (catalog === null ? mockProducts : [])}
+      initialProducts={catalog?.products ?? demoProducts}
       store={catalog?.store ?? null}
       storeOptions={catalog?.stores ?? []}
       viewerRole={viewer.role}

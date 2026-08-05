@@ -75,12 +75,10 @@ interface ChatHistoryItem {
 }
 
 function getClientKey(request: Request) {
-  return (
-    request.headers.get("x-vercel-forwarded-for")?.split(",")[0]?.trim()
-    || request.headers.get("x-real-ip")?.trim()
-    || request.headers.get("x-forwarded-for")?.split(",")[0]?.trim()
-    || "anonymous"
-  ).slice(0, 128);
+  // Only trust the platform-controlled Vercel header. The other forwarding
+  // headers are client-controlled on generic deployments and can be spoofed
+  // to bypass the limiter.
+  return (request.headers.get("x-vercel-forwarded-for")?.split(",")[0]?.trim() || "anonymous").slice(0, 128);
 }
 
 function getLocalRateLimitRetryAfter(key: string) {

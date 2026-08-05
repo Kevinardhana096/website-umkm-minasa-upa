@@ -34,7 +34,7 @@ export const CatalogPage: React.FC<CatalogPageProps> = ({
   viewerUserId,
 }) => {
   const [products, setProducts] = useState(initialProducts);
-  const [memberStores, setMemberStores] = useState(storeOptions);
+  const [, setMemberStores] = useState(storeOptions);
   const [memberProductRows, setMemberProductRows] = useState<ProductRow[]>([]);
   const [searchQuery, setSearchQuery] = useState('');
   const [selectedProduct, setSelectedProduct] = useState<Product | null>(null);
