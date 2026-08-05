@@ -9,7 +9,8 @@ import {
   ArrowRight,
   ShoppingBag,
   ChevronLeft,
-  ChevronRight
+  ChevronRight,
+  Star
 } from 'lucide-react';
 import { Navbar } from './Navbar';
 import { Footer } from './Footer';
@@ -347,12 +348,11 @@ export const ProfilPage: React.FC<ProfilPageProps> = ({ store = null, products =
                         sizes="(max-width: 640px) 50vw, (max-width: 1024px) 50vw, 25vw"
                         className="object-cover group-hover:scale-105 transition-transform duration-300"
                       />
-                      {product.isVerified && (
-                        <span className="absolute top-2 left-2 sm:top-2.5 sm:left-2.5 px-2 py-0.5 sm:px-2.5 sm:py-1 rounded bg-[#0F2C23]/90 text-white text-[9px] sm:text-[10px] font-bold tracking-wide flex items-center gap-1 shadow-xs">
-                          <CheckCircle2 className="w-2.5 h-2.5 sm:w-3 sm:h-3 text-emerald-400" />
-                          Verified
-                        </span>
-                      )}
+                      {/* Featured Star Badge */}
+                      <span className="absolute top-2.5 left-2.5 px-2 py-0.5 sm:px-2.5 sm:py-1 rounded-full bg-gradient-to-r from-amber-500 to-amber-600 text-white text-[9px] sm:text-[10px] font-extrabold tracking-wide flex items-center gap-1 shadow-md">
+                        <Star className="w-2.5 h-2.5 sm:w-3 sm:h-3 fill-white text-white" />
+                        Unggulan
+                      </span>
                     </div>
 
                     <div className="p-3 sm:p-4 flex-1 flex flex-col justify-between">

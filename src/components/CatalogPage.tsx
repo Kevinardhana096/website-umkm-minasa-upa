@@ -325,14 +325,6 @@ export const CatalogPage: React.FC<CatalogPageProps> = ({
                         <Star className="w-2.5 h-2.5 sm:w-3 sm:h-3 fill-white text-white" />
                         Unggulan
                       </span>
-
-                      {/* Verified Badge */}
-                      {product.isVerified && (
-                        <span className="absolute top-2.5 right-2.5 px-2 py-0.5 rounded bg-emerald-950/80 text-emerald-300 text-[9px] font-bold tracking-wide flex items-center gap-0.5 backdrop-blur-xs border border-emerald-500/30">
-                          <CheckCircle2 className="w-2.5 h-2.5 text-emerald-400" />
-                          Verified
-                        </span>
-                      )}
                     </div>
 
                     {/* Card Body */}
