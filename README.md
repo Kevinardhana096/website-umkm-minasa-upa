@@ -41,6 +41,7 @@ You can start editing the page by modifying `src/app/page.tsx`. The page auto-up
 11. Untuk project yang sudah ada, jalankan `supabase/storage-hardening.sql` agar bucket membatasi file maksimal 5 MB dan hanya menerima JPG, PNG, atau WebP.
 11a. Jalankan `supabase/product-categories.sql` untuk menambahkan kategori pangan dan memberi fallback kategori pada produk lama.
 11b. Jalankan `supabase/product-featured.sql`, lalu jalankan ulang `supabase/atomic-product-write.sql` dan `supabase/member-products.sql` agar admin dapat menentukan produk unggulan.
+11c. Jalankan `supabase/max-featured-products.sql` untuk membatasi produk unggulan menjadi maksimal empat.
 12. Aktifkan Email provider pada Authentication → Providers untuk login email/password.
 13. Pada Authentication → Providers → Email, nonaktifkan **Allow new users to sign up** dan **Confirm Email**. Akun toko hanya dibuat oleh pengelola melalui proses internal dan dapat login tanpa verifikasi email.
 

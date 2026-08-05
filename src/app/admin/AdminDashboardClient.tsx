@@ -9,6 +9,7 @@ import { AdminUserManagement } from "@/components/admin/AdminUserManagement";
 import { AdminProductMonitoring } from "@/components/admin/AdminProductMonitoring";
 import { AdminStoreEditModal } from "@/components/admin/AdminStoreEditModal";
 import { ProductFormModal } from "@/components/dashboard/ProductFormModal";
+import { MAX_FEATURED_PRODUCTS } from "@/lib/products";
 import type { NewProductInput, StoreProfileInput } from "@/lib/store-service";
 
 type StatusFilter = "semua" | "aktif" | "nonaktif";
@@ -48,6 +49,10 @@ export function AdminDashboardClient({ initialData }: AdminDashboardClientProps)
     products: result.products + store.product_count,
     visibleProducts: result.visibleProducts + store.visible_product_count,
   }), { stores: 0, activeStores: 0, products: 0, visibleProducts: 0 }), [initialData.stores]);
+  const featuredProductCount = useMemo(
+    () => initialData.products.filter((product) => product.is_featured).length,
+    [initialData.products],
+  );
 
   const handleSignOut = async () => {
     setIsSigningOut(true);
@@ -325,6 +330,8 @@ export function AdminDashboardClient({ initialData }: AdminDashboardClientProps)
         isOpen={Boolean(editingProduct)}
         isSaving={Boolean(editingProduct && pendingCatalogAction === `${editingProduct.id}:save`)}
         allowFeatured
+        featuredProductCount={featuredProductCount}
+        maxFeaturedProducts={MAX_FEATURED_PRODUCTS}
         onClose={() => setEditingProduct(null)}
         onSave={handleSaveProduct}
       />

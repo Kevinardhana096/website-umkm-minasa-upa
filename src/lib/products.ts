@@ -1,6 +1,7 @@
 import type { Product, ProductCategory } from "@/types/product";
 
 export const MAX_PRODUCT_IMAGES = 5;
+export const MAX_FEATURED_PRODUCTS = 4;
 
 export interface ProductRow {
   id: string;

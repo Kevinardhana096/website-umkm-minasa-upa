@@ -2,7 +2,7 @@ import { NextResponse } from "next/server";
 import { createClient as createSupabaseClient } from "@supabase/supabase-js";
 import { createClient } from "@/lib/supabase/server";
 import { revalidatePublicCatalogCache } from "@/lib/catalog";
-import { MAX_PRODUCT_IMAGES, normalizeProductRow, normalizeProductRows, PRODUCT_SELECT, type ProductQueryRow } from "@/lib/products";
+import { MAX_FEATURED_PRODUCTS, MAX_PRODUCT_IMAGES, normalizeProductRow, normalizeProductRows, PRODUCT_SELECT, type ProductQueryRow } from "@/lib/products";
 import { validateWhatsappNumber } from "@/lib/whatsapp";
 import { PRODUCT_CATEGORIES } from "@/types/product";
 
@@ -242,6 +242,17 @@ async function updateProduct(
     .maybeSingle<ProductQueryRow>();
   if (existingError) return jsonError("Data produk gagal dimuat.", 500);
   if (!existingProduct) return jsonError("Produk tidak ditemukan.", 404);
+
+  if (isFeatured && !existingProduct.is_featured) {
+    const { count, error: featuredCountError } = await serviceClient
+      .from("products")
+      .select("id", { count: "exact", head: true })
+      .eq("is_featured", true);
+    if (featuredCountError) return jsonError("Jumlah produk unggulan gagal dimuat.", 500);
+    if ((count ?? 0) >= MAX_FEATURED_PRODUCTS) {
+      return jsonError(`Maksimal ${MAX_FEATURED_PRODUCTS} produk unggulan yang dapat ditampilkan di profil UMKM.`, 400);
+    }
+  }
 
   const { data: productOwner, error: ownerError } = await serviceClient
     .from("products")

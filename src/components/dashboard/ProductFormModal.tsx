@@ -15,6 +15,8 @@ interface ProductFormModalProps {
   storeOptions?: CatalogStoreOption[];
   defaultWhatsappNumber?: string;
   allowFeatured?: boolean;
+  featuredProductCount?: number;
+  maxFeaturedProducts?: number;
   onClose: () => void;
   onSave: (input: NewProductInput) => Promise<void>;
 }
@@ -82,11 +84,14 @@ export function ProductFormModal({
   storeOptions = [],
   defaultWhatsappNumber = "",
   allowFeatured = false,
+  featuredProductCount = 0,
+  maxFeaturedProducts = 4,
   onClose,
   onSave,
 }: ProductFormModalProps) {
   const [form, setForm] = useState(() => formFromProduct(product, defaultStoreName, defaultWhatsappNumber));
   const [imageError, setImageError] = useState("");
+  const featuredLimitReached = allowFeatured && !product?.is_featured && featuredProductCount >= maxFeaturedProducts;
   if (!isOpen) return null;
 
   const addImages = (files: File[]) => {
@@ -282,7 +287,21 @@ export function ProductFormModal({
           <div className="flex flex-wrap gap-5 pt-1 text-xs font-semibold text-gray-700">
             <label className="flex cursor-pointer items-center gap-2"><input type="checkbox" checked={form.isAvailable} onChange={(event) => setForm({ ...form, isAvailable: event.target.checked })} className="h-4 w-4 rounded border-gray-300 text-[#0F2C23] focus:ring-[#0F2C23]" /> Stok Tersedia</label>
             <label className="flex cursor-pointer items-center gap-2"><input type="checkbox" checked={form.isVisible} onChange={(event) => setForm({ ...form, isVisible: event.target.checked })} className="h-4 w-4 rounded border-gray-300 text-[#0F2C23] focus:ring-[#0F2C23]" /> Tampilkan di Katalog Publik</label>
-            {allowFeatured && <label className="flex cursor-pointer items-center gap-2"><input type="checkbox" checked={form.isFeatured} onChange={(event) => setForm({ ...form, isFeatured: event.target.checked })} className="h-4 w-4 rounded border-gray-300 text-[#0F2C23] focus:ring-[#0F2C23]" /> Tampilkan sebagai Produk Unggulan</label>}
+            {allowFeatured && (
+              <div>
+                <label className={`flex items-center gap-2 ${featuredLimitReached ? "cursor-not-allowed text-gray-400" : "cursor-pointer"}`}>
+                  <input
+                    type="checkbox"
+                    checked={form.isFeatured}
+                    disabled={featuredLimitReached}
+                    onChange={(event) => setForm({ ...form, isFeatured: event.target.checked })}
+                    className="h-4 w-4 rounded border-gray-300 text-[#0F2C23] focus:ring-[#0F2C23] disabled:cursor-not-allowed"
+                  />
+                  Tampilkan sebagai Produk Unggulan ({featuredProductCount}/{maxFeaturedProducts})
+                </label>
+                {featuredLimitReached && <p className="mt-1 text-[11px] font-medium text-amber-700">Maksimal {maxFeaturedProducts} produk unggulan. Hapus status unggulan pada produk lain terlebih dahulu.</p>}
+              </div>
+            )}
           </div>
 
           <div className="mt-6 flex flex-col-reverse gap-2 border-t border-gray-100 pt-4 sm:flex-row sm:items-center sm:justify-end sm:gap-3">
