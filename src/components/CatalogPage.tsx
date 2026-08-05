@@ -2,14 +2,17 @@
 
 import React, { useState, useMemo, useRef, useEffect } from 'react';
 import dynamic from 'next/dynamic';
+import Image from 'next/image';
+import { CheckCircle2, ShoppingBag, ChevronRight, Sparkles, Star, ArrowRight } from 'lucide-react';
 import { Navbar } from './Navbar';
 import { HeroSection } from './HeroSection';
 import { ProductGrid } from './ProductGrid';
 import { ProductDetailModal } from './ProductDetailModal';
 import { Footer } from './Footer';
 import { FloatingChatWidget, FloatingChatWidgetRef } from './FloatingChatWidget';
+import { MarkdownContent } from './MarkdownContent';
 import { mockProducts } from '@/data/mockProducts';
-import type { CatalogStore, CatalogStoreOption, ProductRow } from '@/lib/products';
+import { formatRupiah, type CatalogStore, type CatalogStoreOption, type ProductRow } from '@/lib/products';
 import { deleteProduct, revalidatePublicCatalog, type NewProductInput } from '@/lib/store-service';
 import { DEFAULT_MEMBER_STORE_NAME, getMemberCatalogData, mapMemberProduct, saveMemberProduct } from '@/lib/member-service';
 import { Product } from '@/types/product';
@@ -101,6 +104,11 @@ export const CatalogPage: React.FC<CatalogPageProps> = ({
       return matchesSearch;
     });
   }, [products, searchQuery]);
+
+  // Featured products (max 4 products marked with isFeatured)
+  const featuredProducts = useMemo(() => {
+    return products.filter((product) => product.isFeatured === true).slice(0, 4);
+  }, [products]);
 
   const handleContactSellerClick = () => {
     if (!store?.whatsappNumber) {
@@ -200,6 +208,108 @@ export const CatalogPage: React.FC<CatalogPageProps> = ({
           onSearchChange={setSearchQuery}
         />
 
+        {/* Produk Unggulan Section (Shown when search is empty and featured products exist) */}
+        {!searchQuery.trim() && featuredProducts.length > 0 && (
+          <section className="mt-8 mb-12 p-4 sm:p-7 rounded-3xl bg-gradient-to-br from-[#0F2C23]/[0.04] via-[#F4EBD9]/50 to-[#963E1B]/[0.04] border border-[#0F2C23]/10 shadow-xs relative overflow-hidden">
+            {/* Background Accent Blur Decorative Orbs */}
+            <div className="absolute -top-12 -right-12 w-40 h-40 bg-amber-200/30 rounded-full blur-2xl pointer-events-none" />
+            <div className="absolute -bottom-12 -left-12 w-40 h-40 bg-[#0F2C23]/5 rounded-full blur-2xl pointer-events-none" />
+
+            {/* Header */}
+            <div className="relative z-10 flex flex-col items-center text-center max-w-2xl mx-auto mb-7">
+              <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-[#0F2C23] text-amber-300 text-[11px] font-bold tracking-wide shadow-xs mb-2.5">
+                <Sparkles className="w-3.5 h-3.5 text-amber-400 fill-amber-400" />
+                REKOMENDASI PILIHAN
+              </span>
+              <h2 className="text-2xl sm:text-3xl font-extrabold text-[#0F2C23] tracking-tight">
+                Produk Unggulan UMKM
+              </h2>
+              <p className="mt-1 text-xs sm:text-sm text-gray-600">
+                Pilihan olahan khas terbaik buatan ibu-ibu Kelompok UMKM Wanita Tangguh.
+              </p>
+            </div>
+
+            {/* Featured Product Cards Carousel / Grid */}
+            <div className="relative z-10 flex overflow-x-auto snap-x snap-mandatory pb-3 gap-3 sm:gap-5 sm:grid sm:grid-cols-2 lg:grid-cols-4 sm:overflow-visible scrollbar-none">
+              {featuredProducts.map((product) => (
+                <div
+                  key={product.id}
+                  onClick={() => setSelectedProduct(product)}
+                  className="w-[calc(50%-0.375rem)] min-w-[calc(50%-0.375rem)] shrink-0 snap-start sm:w-auto sm:min-w-0 sm:shrink bg-white/90 backdrop-blur-xs rounded-2xl overflow-hidden border border-amber-200/70 shadow-xs hover:shadow-xl hover:-translate-y-1.5 transition-all duration-300 flex flex-col group cursor-pointer"
+                >
+                  {/* Card Image Area with Custom Badges */}
+                  <div className="relative h-36 sm:h-44 w-full overflow-hidden bg-gray-100">
+                    <Image
+                      src={product.imageUrl || '/food_umkm.jpg'}
+                      alt={product.name}
+                      fill
+                      unoptimized
+                      sizes="(max-width: 640px) 50vw, (max-width: 1024px) 50vw, 25vw"
+                      className="object-cover group-hover:scale-105 transition-transform duration-500"
+                    />
+                    
+                    {/* Featured Star Badge */}
+                    <span className="absolute top-2.5 left-2.5 px-2 py-0.5 sm:px-2.5 sm:py-1 rounded-full bg-gradient-to-r from-amber-500 to-amber-600 text-white text-[9px] sm:text-[10px] font-extrabold tracking-wide flex items-center gap-1 shadow-md">
+                      <Star className="w-2.5 h-2.5 sm:w-3 sm:h-3 fill-white text-white" />
+                      Unggulan
+                    </span>
+
+                    {/* Verified Badge */}
+                    {product.isVerified && (
+                      <span className="absolute top-2.5 right-2.5 px-2 py-0.5 rounded bg-emerald-950/80 text-emerald-300 text-[9px] font-bold tracking-wide flex items-center gap-0.5 backdrop-blur-xs border border-emerald-500/30">
+                        <CheckCircle2 className="w-2.5 h-2.5 text-emerald-400" />
+                        Verified
+                      </span>
+                    )}
+                  </div>
+
+                  {/* Card Body */}
+                  <div className="p-3 sm:p-4 flex-1 flex flex-col justify-between bg-gradient-to-b from-white to-[#FAF9F6]">
+                    <div>
+                      <div className="flex items-center justify-between gap-1">
+                        <span className="truncate max-w-[120px] text-[10px] sm:text-[11px] font-medium text-gray-500">
+                          {product.merchantName}
+                        </span>
+                      </div>
+                      <h3 className="text-xs sm:text-sm font-bold text-gray-900 group-hover:text-[#0F2C23] transition-colors mt-1 line-clamp-1">
+                        {product.name}
+                      </h3>
+                      {product.description && (
+                        <div className="mt-1">
+                          <MarkdownContent content={product.description} className="text-[11px] sm:text-xs text-gray-600 line-clamp-2 leading-relaxed" />
+                        </div>
+                      )}
+                    </div>
+
+                    {/* Footer Price & Action CTA */}
+                    <div className="mt-3 pt-2.5 border-t border-gray-100/80 flex items-center justify-between gap-1">
+                      <div className="flex flex-col">
+                        <span className="text-[9px] text-gray-400 uppercase font-semibold">Harga</span>
+                        <span className="text-xs sm:text-sm font-black text-[#963E1B]">
+                          {formatRupiah(product.price)}
+                        </span>
+                      </div>
+
+                      <button
+                        type="button"
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          setSelectedProduct(product);
+                        }}
+                        className="px-2.5 py-1.5 rounded-xl bg-[#0F2C23] text-white hover:bg-[#963E1B] text-[11px] font-semibold flex items-center gap-1 shadow-2xs transition-all group-hover:shadow-md cursor-pointer"
+                        title="Lihat Detail Produk"
+                      >
+                        <span>Detail</span>
+                        <ArrowRight className="w-3 h-3 transition-transform group-hover:translate-x-0.5" />
+                      </button>
+                    </div>
+                  </div>
+                </div>
+              ))}
+            </div>
+          </section>
+        )}
+
         {viewerRole === 'anggota' && (
           <div className="mt-4 flex flex-col justify-between gap-3 rounded-2xl border border-[#D9E8E1] bg-[#E8F3EF] p-4 sm:flex-row sm:items-center sm:p-5">
             <div>
@@ -216,7 +326,23 @@ export const CatalogPage: React.FC<CatalogPageProps> = ({
         {memberMessage && <p role="status" className="mt-4 rounded-xl border border-emerald-200 bg-emerald-50 px-4 py-3 text-sm font-semibold text-emerald-700">{memberMessage}</p>}
 
         {/* Product Catalog Section Anchor */}
-        <div id="katalog-produk" className="scroll-mt-24 pt-4">
+        <div id="katalog-produk" className="scroll-mt-24 pt-6 border-t border-gray-200/70 mt-6">
+          {/* Section Title Header for All Products */}
+          <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 mb-6">
+            <div>
+              <div className="flex items-center gap-2 text-[#963E1B] text-xs font-bold uppercase tracking-wider">
+                <ShoppingBag className="w-3.5 h-3.5" />
+                <span>KATALOG LENGKAP</span>
+              </div>
+              <h2 className="text-xl sm:text-2xl font-bold text-gray-900 mt-0.5">
+                {searchQuery.trim() ? `Hasil Pencarian ("${searchQuery}")` : 'Semua Produk UMKM'}
+              </h2>
+            </div>
+            <span className="text-xs font-semibold text-gray-600 bg-gray-100/90 border border-gray-200/80 px-3 py-1.5 rounded-full self-start sm:self-auto">
+              Menampilkan {filteredProducts.length} produk
+            </span>
+          </div>
+
           {/* Product Cards Grid with Pagination */}
           <ProductGrid
             key={searchQuery}
