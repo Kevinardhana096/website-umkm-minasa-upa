@@ -4,7 +4,7 @@ import { useMemo, useState } from "react";
 import { CheckCircle2, Edit, Eye, EyeOff, PackageSearch, Search, Star, Trash2, XCircle } from "lucide-react";
 import type { AdminProductSummary } from "@/lib/admin-service";
 
-type ProductStatusFilter = "semua" | "tampil" | "tersembunyi" | "tersedia" | "habis";
+type ProductStatusFilter = "semua" | "unggulan" | "tampil" | "tersembunyi" | "tersedia" | "habis";
 
 interface AdminProductMonitoringProps {
   products: AdminProductSummary[];
@@ -23,6 +23,7 @@ export function AdminProductMonitoring({ products, onEdit, onDelete, pendingActi
       const matchesSearch = !query || [product.name, product.description, product.store_name]
         .some((value) => value.toLowerCase().includes(query));
       const matchesStatus = statusFilter === "semua"
+        || (statusFilter === "unggulan" && product.is_featured)
         || (statusFilter === "tampil" && product.is_visible)
         || (statusFilter === "tersembunyi" && !product.is_visible)
         || (statusFilter === "tersedia" && product.is_available)
@@ -49,6 +50,7 @@ export function AdminProductMonitoring({ products, onEdit, onDelete, pendingActi
           </label>
           <select value={statusFilter} onChange={(event) => setStatusFilter(event.target.value as ProductStatusFilter)} className="rounded-xl border border-gray-200 bg-white px-3 py-2.5 text-sm font-semibold text-gray-700 outline-none focus:border-[#0F2C23]">
             <option value="semua">Semua status</option>
+            <option value="unggulan">Produk unggulan</option>
             <option value="tampil">Tampil</option>
             <option value="tersembunyi">Tersembunyi</option>
             <option value="tersedia">Tersedia</option>
