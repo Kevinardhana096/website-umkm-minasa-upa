@@ -17,8 +17,7 @@ import {
   Layers,
   Ruler,
   Check,
-  MapPin,
-  Heart
+  MapPin
 } from 'lucide-react';
 
 interface ProductDetailModalProps {
@@ -34,7 +33,6 @@ export const ProductDetailModal: React.FC<ProductDetailModalProps> = ({
 }) => {
   const [activeImageIndex, setActiveImageIndex] = useState(0);
   const [isZoomed, setIsZoomed] = useState(false);
-  const [isLiked, setIsLiked] = useState(false);
   const closeButtonRef = useRef<HTMLButtonElement>(null);
   const previousFocusRef = useRef<HTMLElement | null>(null);
 
@@ -172,17 +170,6 @@ export const ProductDetailModal: React.FC<ProductDetailModalProps> = ({
 
               {/* Action Buttons Top Right of Image */}
               <div className="absolute top-3.5 right-3.5 z-10 flex items-center gap-2">
-                <button
-                  onClick={() => setIsLiked(!isLiked)}
-                  className={`p-2 rounded-full backdrop-blur-md shadow-sm border transition-all cursor-pointer ${
-                    isLiked 
-                      ? 'bg-rose-50 border-rose-200 text-rose-500' 
-                      : 'bg-white/90 border-gray-100 text-gray-600 hover:text-rose-500'
-                  }`}
-                  title="Simpan Favorit"
-                >
-                  <Heart className={`w-4 h-4 ${isLiked ? 'fill-rose-500' : ''}`} />
-                </button>
                 {galleryImages.length > 0 && (
                   <button
                     onClick={() => setIsZoomed(true)}
