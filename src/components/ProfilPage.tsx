@@ -27,6 +27,7 @@ interface ProfilPageProps {
 
 export const ProfilPage: React.FC<ProfilPageProps> = ({ store = null, products = [] }) => {
   const chatWidgetRef = useRef<FloatingChatWidgetRef>(null);
+  const featuredScrollRef = useRef<HTMLDivElement>(null);
   const [selectedProduct, setSelectedProduct] = useState<Product | null>(null);
 
   const heroSlides = [
@@ -59,6 +60,56 @@ export const ProfilPage: React.FC<ProfilPageProps> = ({ store = null, products =
     return () => clearInterval(timer);
   }, [heroSlides.length]);
 
+  const featuredProducts = products.filter((product) => product.isFeatured === true).slice(0, 6);
+
+  // Auto-scroll carousel for featured products (especially on mobile)
+  useEffect(() => {
+    if (window.matchMedia('(prefers-reduced-motion: reduce)').matches) return;
+    const container = featuredScrollRef.current;
+    if (!container || featuredProducts.length <= 1) return;
+
+    let isPaused = false;
+    const handlePause = () => { isPaused = true; };
+    const handleResume = () => { isPaused = false; };
+
+    container.addEventListener('mouseenter', handlePause);
+    container.addEventListener('mouseleave', handleResume);
+    container.addEventListener('touchstart', handlePause, { passive: true });
+    container.addEventListener('touchend', handleResume, { passive: true });
+
+    const timer = setInterval(() => {
+      if (isPaused) return;
+      const maxScroll = container.scrollWidth - container.clientWidth;
+      if (maxScroll <= 5) return;
+
+      if (container.scrollLeft >= maxScroll - 15) {
+        container.scrollTo({ left: 0, behavior: 'smooth' });
+      } else {
+        container.scrollBy({ left: 220, behavior: 'smooth' });
+      }
+    }, 3800);
+
+    return () => {
+      clearInterval(timer);
+      container.removeEventListener('mouseenter', handlePause);
+      container.removeEventListener('mouseleave', handleResume);
+      container.removeEventListener('touchstart', handlePause);
+      container.removeEventListener('touchend', handleResume);
+    };
+  }, [featuredProducts.length]);
+
+  const scrollFeaturedLeft = () => {
+    if (featuredScrollRef.current) {
+      featuredScrollRef.current.scrollBy({ left: -240, behavior: 'smooth' });
+    }
+  };
+
+  const scrollFeaturedRight = () => {
+    if (featuredScrollRef.current) {
+      featuredScrollRef.current.scrollBy({ left: 240, behavior: 'smooth' });
+    }
+  };
+
   const nextSlide = () => {
     setCurrentSlide((prev) => (prev + 1) % heroSlides.length);
   };
@@ -78,8 +129,6 @@ export const ProfilPage: React.FC<ProfilPageProps> = ({ store = null, products =
     )}`;
     window.open(waUrl, '_blank');
   };
-
-  const featuredProducts = products.filter((product) => product.isFeatured === true).slice(0, 4);
 
   return (
     <div className="min-h-screen flex flex-col bg-[#FAF9F6] text-gray-900 font-sans selection:bg-[#F4EBD9]">
@@ -247,19 +296,47 @@ export const ProfilPage: React.FC<ProfilPageProps> = ({ store = null, products =
            ========================================================================= */}
         <section className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
           
-          {/* Header */}
-          <div className="text-center max-w-2xl mx-auto mb-12">
-            <h2 className="text-2xl sm:text-4xl font-bold text-gray-900 tracking-tight">
-              Produk Unggulan
-            </h2>
-            <p className="mt-2 text-sm sm:text-base text-gray-600">
-              Produk olahan yang dikembangkan oleh anggota Kelompok UMKM Wanita Tangguh Minasa Upa.
-            </p>
+          {/* Header with Navigation Controls */}
+          <div className="flex flex-col sm:flex-row sm:items-end justify-between gap-4 mb-8 sm:mb-12">
+            <div className="text-center sm:text-left max-w-2xl">
+              <h2 className="text-2xl sm:text-4xl font-bold text-gray-900 tracking-tight">
+                Produk Unggulan
+              </h2>
+              <p className="mt-2 text-sm sm:text-base text-gray-600">
+                Produk olahan yang dikembangkan oleh anggota Kelompok UMKM Wanita Tangguh Minasa Upa.
+              </p>
+            </div>
+
+            {/* Navigation Arrow Controls for Horizontal Scroll */}
+            {featuredProducts.length > 0 && (
+              <div className="flex items-center justify-center sm:justify-end gap-2 shrink-0">
+                <span className="text-xs font-semibold text-gray-400 sm:hidden">Geser produk</span>
+                <button
+                  type="button"
+                  onClick={scrollFeaturedLeft}
+                  aria-label="Scroll Produk Unggulan ke Kiri"
+                  className="p-2.5 rounded-full bg-white border border-gray-200 text-gray-700 shadow-xs hover:bg-[#0F2C23] hover:text-white hover:border-[#0F2C23] active:scale-95 transition-all cursor-pointer"
+                >
+                  <ChevronLeft className="w-4 h-4 sm:w-5 sm:h-5" />
+                </button>
+                <button
+                  type="button"
+                  onClick={scrollFeaturedRight}
+                  aria-label="Scroll Produk Unggulan ke Kanan"
+                  className="p-2.5 rounded-full bg-white border border-gray-200 text-gray-700 shadow-xs hover:bg-[#0F2C23] hover:text-white hover:border-[#0F2C23] active:scale-95 transition-all cursor-pointer"
+                >
+                  <ChevronRight className="w-4 h-4 sm:w-5 sm:h-5" />
+                </button>
+              </div>
+            )}
           </div>
 
-          {/* Product Grid */}
+          {/* Product Grid / Horizontal Carousel Container */}
           {featuredProducts.length > 0 ? (
-            <div className="flex overflow-x-auto snap-x snap-mandatory pb-4 gap-3 sm:gap-6 sm:grid sm:grid-cols-2 lg:grid-cols-4 sm:overflow-visible scrollbar-none">
+            <div
+              ref={featuredScrollRef}
+              className="flex overflow-x-auto snap-x snap-mandatory pb-4 gap-3 sm:gap-6 sm:grid sm:grid-cols-2 lg:grid-cols-4 sm:overflow-visible scrollbar-none"
+            >
               {featuredProducts.map((product) => (
               <div 
                 key={product.id}
