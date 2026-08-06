@@ -36,6 +36,10 @@ interface FloatingChatWidgetProps {
   pageContext?: Exclude<ChatPageContext, 'product'>;
 }
 
+// Sakelar sementara untuk menonaktifkan seluruh pertanyaan/rekomendasi default.
+// Ubah ke `true` saat fitur siap digunakan kembali.
+const DEFAULT_QUESTIONS_ENABLED = false;
+
 const PROFILE_SUGGESTION_POOL = [
   'Apa itu Kelompok UMKM Wanita Tangguh Minasa Upa?',
   'Kapan Kelompok UMKM Wanita Tangguh didirikan?',
@@ -165,6 +169,8 @@ export const FloatingChatWidget = forwardRef<FloatingChatWidgetRef, FloatingChat
     product?: Product | null,
     followUp?: { question: string; answer: string; history: ChatMessage[] },
   ) => {
+    if (!DEFAULT_QUESTIONS_ENABLED) return;
+
     const requestId = ++suggestionRequestIdRef.current;
     suggestionControllerRef.current?.abort();
     const controller = new AbortController();
@@ -223,17 +229,19 @@ export const FloatingChatWidget = forwardRef<FloatingChatWidgetRef, FloatingChat
   const openWithContext = (pageContext: ChatPageContext, product?: Product | null) => {
     const selectedProduct = product ?? null;
     setContextProduct(product ?? null);
-    setSuggestions(getImmediateSuggestions(pageContext, selectedProduct, selectedSuggestionsRef.current));
+    setSuggestions(DEFAULT_QUESTIONS_ENABLED
+      ? getImmediateSuggestions(pageContext, selectedProduct, selectedSuggestionsRef.current)
+      : []);
     setMessages([{
       sender: 'bot',
       text: pageContext === 'product' && product
-        ? `Halo! Saya siap membantu mengenai ${product.name}. Pilih pertanyaan di bawah atau tulis pertanyaan Anda.`
+        ? `Halo! Saya siap membantu mengenai ${product.name}. Silakan tulis pertanyaan Anda.`
         : pageContext === 'profile'
-          ? 'Halo! Saya siap membantu tentang UMKM Wanita Tangguh Minasa Upa. Pilih pertanyaan di bawah atau tulis pertanyaan Anda.'
-          : 'Halo! Saya siap membantu menjelajahi katalog UMKM. Pilih pertanyaan di bawah atau tulis pertanyaan Anda.',
+          ? 'Halo! Saya siap membantu tentang UMKM Wanita Tangguh Minasa Upa. Silakan tulis pertanyaan Anda.'
+          : 'Halo! Saya siap membantu menjelajahi katalog UMKM. Silakan tulis pertanyaan Anda.',
     }]);
     setIsOpen(true);
-    void requestSuggestions(pageContext, product);
+    if (DEFAULT_QUESTIONS_ENABLED) void requestSuggestions(pageContext, product);
   };
 
   const requestBotReply = async (userMessage: string, product = contextProduct) => {
@@ -294,11 +302,13 @@ export const FloatingChatWidget = forwardRef<FloatingChatWidgetRef, FloatingChat
         { sender: 'user' as const, text: userMessage },
         { sender: 'bot' as const, text: payload.reply },
       ].slice(-8);
-      void requestSuggestions(product ? 'product' : pageContext, product, {
-        question: userMessage,
-        answer: payload.reply,
-        history: nextHistory,
-      });
+      if (DEFAULT_QUESTIONS_ENABLED) {
+        void requestSuggestions(product ? 'product' : pageContext, product, {
+          question: userMessage,
+          answer: payload.reply,
+          history: nextHistory,
+        });
+      }
     } catch (error) {
       if (requestId !== requestIdRef.current || (error instanceof DOMException && error.name === 'AbortError')) return;
       const fallback = buildFallbackChatReply(userMessage, productContext, storeContext);
@@ -390,7 +400,7 @@ export const FloatingChatWidget = forwardRef<FloatingChatWidgetRef, FloatingChat
                 <div className="rounded-2xl rounded-bl-none border border-gray-200 bg-white px-3.5 py-2.5 text-xs text-gray-500 shadow-sm">Asisten sedang menyiapkan jawaban...</div>
               </div>
             )}
-            {!isReplying && (isLoadingSuggestions || suggestions.length > 0) && (
+            {DEFAULT_QUESTIONS_ENABLED && !isReplying && (isLoadingSuggestions || suggestions.length > 0) && (
               <div className="ml-11 pt-1">
                 <p className="mb-2 text-[10px] font-semibold uppercase tracking-wide text-gray-500">Rekomendasi pertanyaan</p>
                 {suggestions.length === 0 ? (
