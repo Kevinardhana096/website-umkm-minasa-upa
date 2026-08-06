@@ -91,7 +91,8 @@ test("role toko dapat membuat produk dan menguji katalog serta chat", async ({ b
     await input.fill(`Berapa harga dan stok ${productName}, serta bagaimana cara memesannya?`);
     await input.press("Enter");
     await expect(chat).toContainText(`Harga "${productName}"`, { timeout: 20_000 });
-    await expect(chat).toContainText("Untuk membeli atau memesan");
+    await expect(chat).toContainText('tekan "Lihat Detail"');
+    await expect(chat).toContainText('tekan tombol "Pesan via WA"');
 
     const whatsappLinksBeforeKnowledge = await chat.getByRole("link", { name: "Chat penjual di WhatsApp" }).count();
     await expect(input).toBeEnabled({ timeout: 20_000 });

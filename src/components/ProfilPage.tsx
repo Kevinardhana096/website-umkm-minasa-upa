@@ -257,13 +257,13 @@ export const ProfilPage: React.FC<ProfilPageProps> = ({ store = null, products =
 
               <div className="space-y-4 text-sm sm:text-base text-gray-600 leading-relaxed">
                 <p>
-                  Kelompok UMKM Wanita Tangguh Minasa Upa merupakan kelompok usaha bersama yang berdiri sejak 2020 dan beranggotakan 13 perempuan usia produktif. Kelompok ini tumbuh dari semangat kolaborasi untuk memperkuat kemandirian ekonomi keluarga.
+                  Kelompok UMKM Wanita Tangguh Minasa Upa terbentuk dari semangat para ibu rumah tangga dan perempuan kreatif di wilayah Minasa Upa yang ingin meningkatkan kemandirian ekonomi keluarga. Kelompok usaha bersama ini berdiri sejak 2020 dan beranggotakan 13 perempuan usia produktif.
                 </p>
                 <p>
-                  Berbasis di Desa Minasa Upa, Kecamatan Bontoa, Kabupaten Maros, para anggota mengembangkan produk pangan olahan seperti kue coklat balok, kue kering, onde-onde, sambal kemasan, dan keripik pisang dengan bahan baku lokal.
+                  Melalui keterampilan di bidang makanan, minuman, dan kerajinan, kelompok ini hadir sebagai wadah kolaborasi untuk mengembangkan usaha kecil secara bersama-sama.
                 </p>
                 <p>
-                  Program pemberdayaan diarahkan pada penguatan konten promosi visual, identitas merek, dan layanan pelanggan digital berbasis AI agar produk lebih dikenal, mudah diakses, dan mampu menjangkau pasar yang lebih luas.
+                  Selain memperkuat ekonomi, pembentukan kelompok ini bertujuan membangun solidaritas, mendorong anggota untuk saling mendukung, dan memberdayakan perempuan agar lebih berdaya saing.
                 </p>
               </div>
 
@@ -383,19 +383,23 @@ export const ProfilPage: React.FC<ProfilPageProps> = ({ store = null, products =
                         )}
                       </div>
 
-                      <div className="mt-3 sm:mt-4 pt-2.5 sm:pt-3 border-t border-gray-100 flex items-center justify-between">
-                        <span className="text-xs sm:text-sm font-extrabold text-gray-900">
-                          {formatRupiah(product.price)}
-                        </span>
+                      <div className="mt-3 sm:mt-4 pt-2.5 sm:pt-3 border-t border-gray-100 flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between sm:gap-1">
+                        <div className="flex flex-col min-w-0">
+                          <span className="text-[9px] sm:text-[10px] text-gray-400 uppercase font-semibold tracking-wider">Harga</span>
+                          <span className="text-xs sm:text-sm font-extrabold text-[#963E1B] truncate">
+                            {formatRupiah(product.price)}
+                          </span>
+                        </div>
                         <button
                           type="button"
                           onClick={(e) => {
                             e.stopPropagation();
                             setSelectedProduct(product);
                           }}
-                          className="p-1.5 sm:p-2 rounded-lg bg-gray-100 text-gray-700 hover:bg-[#0F2C23] hover:text-white transition-colors"
+                          className="w-full sm:w-auto px-3 py-1.5 sm:p-2 rounded-xl sm:rounded-lg bg-[#0F2C23] sm:bg-gray-100 text-white sm:text-gray-700 hover:bg-[#963E1B] sm:hover:bg-[#0F2C23] sm:hover:text-white text-xs font-semibold flex items-center justify-center gap-1.5 transition-colors cursor-pointer shrink-0"
                           title="Lihat Detail Produk"
                         >
+                          <span className="sm:hidden text-[11px]">Detail</span>
                           <ShoppingBag className="w-3.5 h-3.5 sm:w-4 sm:h-4" />
                         </button>
                       </div>

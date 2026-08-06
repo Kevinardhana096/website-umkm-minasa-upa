@@ -69,7 +69,9 @@ test.describe("chat policy", () => {
     expect(variantResponse).toBeNull();
     expect(materialResponse).toBeNull();
     expect(availabilityResponse?.reply).toContain("ditandai tersedia");
-    expect(orderingResponse?.reply).toContain("membeli atau memesan");
+    expect(orderingResponse?.reply).toContain('tekan "Lihat Detail"');
+    expect(orderingResponse?.reply).toContain('tekan tombol "Pesan via WA"');
+    expect(orderingResponse?.reply).toContain("melalui WhatsApp");
   });
 
   test("pertanyaan memilih toko di katalog tidak diarahkan ke bantuan akun", () => {
@@ -99,6 +101,21 @@ test.describe("chat policy", () => {
     expect(response?.reply).toContain("snapshot profil proyek");
   });
 
+  test("knowledge menjawab latar belakang dan tujuan kelompok", () => {
+    const background = buildPublicKnowledgeReply(
+      "Apa latar belakang Kelompok UMKM Wanita Tangguh Minasa Upa?",
+    );
+    const purpose = buildPublicKnowledgeReply(
+      "Apa tujuan Kelompok UMKM Wanita Tangguh Minasa Upa dibentuk?",
+    );
+
+    expect(background?.source).toBe("knowledge");
+    expect(background?.reply).toContain("semangat para ibu rumah tangga dan perempuan kreatif");
+    expect(background?.reply).toContain("makanan, minuman, dan kerajinan");
+    expect(purpose?.reply).toContain("membangun solidaritas");
+    expect(purpose?.reply).toContain("lebih berdaya saing");
+  });
+
   test("detail operasional internal tidak diberikan oleh knowledge publik", () => {
     for (const message of [
       "Berapa omzet dan kapasitas produksi Kelompok UMKM Wanita Tangguh?",
@@ -122,6 +139,7 @@ test.describe("chat policy", () => {
     expect(context).toContain("jangan menyebutnya sebagai data resmi atau real-time");
     expect(context).toContain("tidak termasuk dalam knowledge publik");
     expect(context).toContain("[village-location-and-potential]");
+    expect(context).toContain("[group-background-and-purpose]");
   });
 
   test("widget menampilkan hanya sumber web dengan URL aman", async ({ page }) => {
@@ -255,14 +273,19 @@ test.describe("chat policy", () => {
     expect(answerRequests).toBe(0);
   });
 
-  test("memesan dan membeli memakai jawaban pembelian yang sama", async ({ request }) => {
+  test("memesan dan membeli mengikuti prosedur detail produk dan WhatsApp", async ({ request }) => {
     const [buying, ordering] = await Promise.all([
       ask(request, "Bagaimana cara membeli produk?"),
       ask(request, "Bagaimana cara memesan produk?"),
     ]);
 
-    expect(ordering.reply).toBe(buying.reply);
-    expect(ordering.reply).toContain("WhatsApp");
+    for (const response of [buying, ordering]) {
+      const reply = response.reply ?? "";
+      expect(reply).toContain("Lihat Detail");
+      expect(reply).toContain("Pesan via WA");
+      expect(reply).toContain("WhatsApp");
+      expect(reply.indexOf("Lihat Detail")).toBeLessThan(reply.indexOf("Pesan via WA"));
+    }
   });
 
   test("reset password akun publik tidak dianggap permintaan rahasia", async ({ request }) => {
@@ -318,7 +341,8 @@ test.describe("chat policy", () => {
     );
     expect(productReply.reply).toContain(`Harga "${productName}"`);
     expect(productReply.reply).toContain(`Produk "${productName}"`);
-    expect(productReply.reply).toContain("Untuk membeli atau memesan");
+    expect(productReply.reply).toContain('tekan "Lihat Detail"');
+    expect(productReply.reply).toContain('tekan tombol "Pesan via WA"');
 
     const explanationReply = await ask(
       request,
@@ -328,7 +352,8 @@ test.describe("chat policy", () => {
     expect(explanationReply.source).toBe("catalog");
     expect(explanationReply.reply).toContain(`"${productName}"`);
     expect(explanationReply.reply).toContain("Harga saat ini");
-    expect(explanationReply.reply).toContain("Untuk membeli atau memesan");
+    expect(explanationReply.reply).toContain('tekan "Lihat Detail"');
+    expect(explanationReply.reply).toContain('tekan "Pesan via WA"');
     expect(explanationReply.reply).toMatch(/Rp\s+15\.000/);
     expect(explanationReply.reply).not.toContain("Chat AI dapat membantu menjelaskan produk");
 

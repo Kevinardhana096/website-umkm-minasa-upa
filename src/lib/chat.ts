@@ -138,7 +138,7 @@ export function buildProductExplanationReply(
     : "Produk ini ditandai belum tersedia di katalog.";
 
   return {
-    reply: `"${product.name}" dari ${product.merchantName}: ${description} Harga saat ini ${formatRupiah(product.price)}. ${availability} Untuk membeli atau memesan, buka detail produk lalu gunakan tombol WhatsApp untuk menghubungi penjual.`,
+    reply: `"${product.name}" dari ${product.merchantName}: ${description} Harga saat ini ${formatRupiah(product.price)}. ${availability} Untuk memesan, pilih produk di katalog dan tekan "Lihat Detail", lalu tekan "Pesan via WA" untuk menghubungi penjual melalui WhatsApp.`,
     whatsappNumber: product.whatsappNumber?.trim() || undefined,
     whatsappMessage: getWhatsAppMessage(product),
     source: "catalog",
@@ -211,7 +211,7 @@ export function buildDirectChatReply(
   }
 
   if (asksPurchase && product) {
-    sections.push(`Untuk membeli atau memesan "${product.name}", buka detail produk lalu gunakan tombol WhatsApp untuk menghubungi penjual. Konfirmasi stok, harga akhir, jumlah pesanan, dan pengiriman dilakukan langsung dengan penjual.`);
+    sections.push(`Untuk memesan "${product.name}", pilih produknya di katalog lalu tekan "Lihat Detail". Setelah detail produk terbuka, tekan tombol "Pesan via WA" untuk menghubungi penjual melalui WhatsApp. Selanjutnya, konfirmasikan stok, harga akhir, jumlah pesanan, dan pengiriman langsung dengan penjual.`);
   }
 
   if (asksContact && !asksPurchase) {

@@ -38,7 +38,7 @@ export function buildWebsiteHelpReply(message: string, force = false): ChatReply
 
   if (PURCHASE_ACTION_PATTERN.test(message) || /whatsapp|\bwa\b|hubung|kontak/i.test(message)) {
     return {
-      reply: "Untuk membeli produk, buka detail produk lalu gunakan tombol WhatsApp untuk menghubungi penjual. Konfirmasi stok, harga akhir, jumlah pesanan, dan pengiriman dilakukan langsung dengan penjual.",
+      reply: "Untuk memesan produk, pilih produk di katalog lalu tekan \"Lihat Detail\". Setelah detail produk terbuka, tekan tombol \"Pesan via WA\" untuk menghubungi penjual melalui WhatsApp. Selanjutnya, konfirmasikan stok, harga akhir, jumlah pesanan, dan pengiriman langsung dengan penjual.",
       source: "website",
     };
   }
@@ -68,6 +68,7 @@ export function getWebsiteKnowledgeContext() {
     "<public_website_knowledge>",
     "Website ini menyediakan katalog produk UMKM, detail produk, kontak WhatsApp penjual, informasi Desa Minasa Upa, lokasi UMKM, dan chat AI.",
     "Pengguna umum dapat melihat katalog dan menghubungi penjual. Akun toko/admin dibuat oleh pengelola; anggota langsung menuju katalog dan dapat menambahkan serta mengelola produk miliknya sendiri. Pendaftaran publik tidak dibuka.",
+    "Prosedur memesan produk: pilih produk di katalog dan tekan tombol 'Lihat Detail'. Setelah detail produk terbuka, tekan tombol 'Pesan via WA' untuk menghubungi penjual melalui WhatsApp. Pemesanan tidak diproses langsung oleh Chat AI.",
     "Konfirmasi stok, harga akhir, jumlah pesanan, dan pengiriman dilakukan langsung dengan penjual melalui WhatsApp.",
     "Jangan mengungkap API key, password, service-role key, isi environment, bypass login, atau detail database internal.",
     "</public_website_knowledge>",

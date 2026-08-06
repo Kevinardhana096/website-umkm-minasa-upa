@@ -14,7 +14,7 @@ export const PUBLIC_KNOWLEDGE_METADATA: KnowledgeProvenance = {
   sourceType: "internal_draft",
   sourceLabel: "Snapshot profil proyek; belum diverifikasi dengan dokumen resmi",
   verifiedAt: null,
-  version: "2026-08-04.2",
+  version: "2026-08-06.1",
   status: "draft",
 };
 
@@ -43,6 +43,11 @@ const PUBLIC_KNOWLEDGE_ENTRIES: PublicKnowledgeEntry[] = [
     text: "Kelompok UMKM Wanita Tangguh Minasa Upa adalah kelompok usaha bersama yang berdiri sejak 2020 dan terdiri dari 13 perempuan usia produktif.",
   },
   {
+    id: "group-background-and-purpose",
+    intent: "group",
+    text: "Kelompok UMKM Wanita Tangguh Minasa Upa terbentuk dari semangat para ibu rumah tangga dan perempuan kreatif di wilayah Minasa Upa yang ingin meningkatkan kemandirian ekonomi keluarga. Melalui keterampilan di bidang makanan, minuman, dan kerajinan, kelompok ini hadir sebagai wadah kolaborasi untuk mengembangkan usaha kecil secara bersama-sama. Selain memperkuat ekonomi, pembentukan kelompok ini bertujuan membangun solidaritas, mendorong anggota untuk saling mendukung, dan memberdayakan perempuan agar lebih berdaya saing.",
+  },
+  {
     id: "group-products-and-production",
     intent: "group",
     text: "Produk kelompok meliputi kue coklat balok, kue kering, onde-onde, sambal kemasan berbagai varian, dan keripik pisang. Produksi dilakukan secara rumahan oleh anggota kelompok dengan bahan baku yang diperoleh dari pasar lokal Maros dan petani setempat.",
@@ -60,7 +65,7 @@ function asksAboutVillage(message: string) {
 
 function asksAboutGroup(message: string) {
   return /(kelompok\s+umkm|umkm\s+minasa|wanita\s+tangguh|kelompok\s+usaha)/i.test(message)
-    && /apa\s+itu|profil|tentang|jelaskan|produk|usaha|anggota|berdiri|kondisi|pemasaran|buat|jual/i.test(message);
+    && /apa\s+itu|profil|tentang|jelaskan|latar\s+belakang|sejarah|terbentuk|tujuan|manfaat|semangat|solidaritas|pemberdayaan|keterampilan|produk|usaha|anggota|berdiri|kondisi|pemasaran|buat|jual/i.test(message);
 }
 
 function asksAboutBusinessContext(message: string) {
