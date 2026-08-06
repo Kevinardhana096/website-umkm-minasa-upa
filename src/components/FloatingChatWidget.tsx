@@ -25,8 +25,49 @@ interface ChatApiResponse extends ChatReply {
   retryAfterSeconds?: unknown;
 }
 
+type ChatPageContext = 'profile' | 'catalog' | 'product';
+
+interface ChatSuggestionResponse {
+  suggestions?: unknown;
+}
+
 interface FloatingChatWidgetProps {
   store?: CatalogStore | null;
+  pageContext?: Exclude<ChatPageContext, 'product'>;
+}
+
+const PROFILE_SUGGESTION_POOL = [
+  'Apa itu Kelompok UMKM Wanita Tangguh Minasa Upa?',
+  'Kapan Kelompok UMKM Wanita Tangguh didirikan?',
+  'Berapa jumlah anggota kelompok UMKM ini?',
+  'Di mana lokasi Desa Minasa Upa?',
+  'Apa potensi ekonomi lokal Desa Minasa Upa?',
+];
+
+const CATALOG_SUGGESTION_POOL = [
+  'Apa saja jenis produk yang tersedia di katalog?',
+  'Toko atau penjual apa saja yang ada di katalog?',
+  'Bagaimana cara mencari produk tertentu?',
+  'Bagaimana cara membuka detail produk?',
+  'Bagaimana cara menemukan produk dari penjual tertentu?',
+  'Bagaimana cara menghubungi penjual dari katalog?',
+];
+
+function getImmediateSuggestions(pageContext: ChatPageContext, product: Product | null, excluded: Set<string>) {
+  const pool = pageContext === 'profile'
+    ? PROFILE_SUGGESTION_POOL
+    : pageContext === 'catalog'
+      ? CATALOG_SUGGESTION_POOL
+      : [
+          `Bagaimana cara memesan ${product?.name ?? 'produk ini'}?`,
+        ];
+
+  return pool
+    .filter((suggestion) => !excluded.has(suggestion))
+    .map((suggestion) => ({ suggestion, order: Math.random() }))
+    .sort((a, b) => a.order - b.order)
+    .slice(0, 3)
+    .map((item) => item.suggestion);
 }
 
 export interface FloatingChatWidgetRef {
@@ -48,11 +89,17 @@ function isSafeHttpUrl(value: string) {
 }
 
 function toChatProduct(product: Product): ChatProductContext {
+  const detailParts = [
+    product.fullDescription || product.description,
+    product.specifications?.length ? `Spesifikasi: ${product.specifications.join('; ')}` : '',
+    product.guaranteeText ? `Informasi tambahan: ${product.guaranteeText}` : '',
+  ].filter(Boolean);
+
   return {
     id: product.id,
     name: product.name,
     merchantName: product.merchantName,
-    description: product.description,
+    description: detailParts.join('\n'),
     price: product.price,
     isAvailable: product.isAvailable !== false,
     whatsappNumber: product.whatsappNumber,
@@ -69,13 +116,19 @@ function toChatStore(store?: CatalogStore | null): ChatStoreContext | undefined 
   };
 }
 
-export const FloatingChatWidget = forwardRef<FloatingChatWidgetRef, FloatingChatWidgetProps>(({ store }, ref) => {
+export const FloatingChatWidget = forwardRef<FloatingChatWidgetRef, FloatingChatWidgetProps>(({ store, pageContext = 'catalog' }, ref) => {
   const [isOpen, setIsOpen] = useState(false);
   const [contextProduct, setContextProduct] = useState<Product | null>(null);
   const [isReplying, setIsReplying] = useState(false);
+  const [suggestions, setSuggestions] = useState<string[]>([]);
+  const [isLoadingSuggestions, setIsLoadingSuggestions] = useState(false);
   const [retryAfterSeconds, setRetryAfterSeconds] = useState(0);
   const requestIdRef = useRef(0);
   const requestControllerRef = useRef<AbortController | null>(null);
+  const suggestionRequestIdRef = useRef(0);
+  const suggestionControllerRef = useRef<AbortController | null>(null);
+  const selectedSuggestionsRef = useRef(new Set<string>());
+  const askedQuestionsRef = useRef(new Set<string>());
   const [messages, setMessages] = useState<ChatMessage[]>([
     {
       sender: 'bot',
@@ -107,14 +160,96 @@ export const FloatingChatWidget = forwardRef<FloatingChatWidgetRef, FloatingChat
     setMessages((previous) => [...previous, { sender: 'bot', text: payload.reply, whatsappUrl, sources }]);
   };
 
+  const requestSuggestions = async (
+    pageContext: ChatPageContext,
+    product?: Product | null,
+    followUp?: { question: string; answer: string; history: ChatMessage[] },
+  ) => {
+    const requestId = ++suggestionRequestIdRef.current;
+    suggestionControllerRef.current?.abort();
+    const controller = new AbortController();
+    suggestionControllerRef.current = controller;
+    setIsLoadingSuggestions(true);
+
+    try {
+      const response = await fetch('/api/chat', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          action: 'suggestions',
+          page_context: pageContext,
+          product_id: product?.id,
+          product: product ? toChatProduct(product) : undefined,
+          store: toChatStore(store),
+          last_question: followUp?.question,
+          last_answer: followUp?.answer,
+          history: followUp?.history,
+          excluded_questions: Array.from(new Set([
+            ...selectedSuggestionsRef.current,
+            ...askedQuestionsRef.current,
+          ])).slice(-20),
+        }),
+        signal: controller.signal,
+      });
+      const payload = await response.json().catch(() => ({})) as ChatSuggestionResponse;
+      if (requestId !== suggestionRequestIdRef.current || !response.ok || !Array.isArray(payload.suggestions)) return;
+      const aiSuggestions = payload.suggestions
+        .filter((item): item is string => typeof item === 'string')
+        .map((item) => item.trim())
+        .filter((item) => item.length > 0 && !selectedSuggestionsRef.current.has(item))
+        .slice(0, 3);
+      if (aiSuggestions.length > 0) {
+        setSuggestions((current) => {
+          const aiPrimary = aiSuggestions.slice(0, 2);
+          const remaining = Array.from(new Set([...aiSuggestions.slice(2), ...current]))
+            .filter((suggestion) => !aiPrimary.includes(suggestion) && !selectedSuggestionsRef.current.has(suggestion))
+            .map((suggestion) => ({ suggestion, order: Math.random() }))
+            .sort((a, b) => a.order - b.order)
+            .map((item) => item.suggestion);
+          return [...aiPrimary, ...remaining].slice(0, 3);
+        });
+      }
+    } catch (error) {
+      if (error instanceof DOMException && error.name === 'AbortError') return;
+      // Rekomendasi bersifat pelengkap; pengguna tetap dapat mengetik pertanyaan.
+    } finally {
+      if (requestId === suggestionRequestIdRef.current) {
+        suggestionControllerRef.current = null;
+        setIsLoadingSuggestions(false);
+      }
+    }
+  };
+
+  const openWithContext = (pageContext: ChatPageContext, product?: Product | null) => {
+    const selectedProduct = product ?? null;
+    setContextProduct(product ?? null);
+    setSuggestions(getImmediateSuggestions(pageContext, selectedProduct, selectedSuggestionsRef.current));
+    setMessages([{
+      sender: 'bot',
+      text: pageContext === 'product' && product
+        ? `Halo! Saya siap membantu mengenai ${product.name}. Pilih pertanyaan di bawah atau tulis pertanyaan Anda.`
+        : pageContext === 'profile'
+          ? 'Halo! Saya siap membantu tentang UMKM Wanita Tangguh Minasa Upa. Pilih pertanyaan di bawah atau tulis pertanyaan Anda.'
+          : 'Halo! Saya siap membantu menjelajahi katalog UMKM. Pilih pertanyaan di bawah atau tulis pertanyaan Anda.',
+    }]);
+    setIsOpen(true);
+    void requestSuggestions(pageContext, product);
+  };
+
   const requestBotReply = async (userMessage: string, product = contextProduct) => {
     const productContext = product ? toChatProduct(product) : undefined;
     const storeContext = toChatStore(store);
     const requestId = ++requestIdRef.current;
     requestControllerRef.current?.abort();
+    suggestionControllerRef.current?.abort();
+    suggestionRequestIdRef.current += 1;
+    suggestionControllerRef.current = null;
+    setIsLoadingSuggestions(false);
     const controller = new AbortController();
     requestControllerRef.current = controller;
+    askedQuestionsRef.current.add(userMessage);
     setMessages((previous) => [...previous, { sender: 'user', text: userMessage }]);
+    setSuggestions([]);
     setIsReplying(true);
 
     try {
@@ -154,6 +289,16 @@ export const FloatingChatWidget = forwardRef<FloatingChatWidgetRef, FloatingChat
         whatsappNumber: payload.whatsappNumber,
         whatsappMessage: payload.whatsappMessage,
       });
+      const nextHistory: ChatMessage[] = [
+        ...messages,
+        { sender: 'user' as const, text: userMessage },
+        { sender: 'bot' as const, text: payload.reply },
+      ].slice(-8);
+      void requestSuggestions(product ? 'product' : pageContext, product, {
+        question: userMessage,
+        answer: payload.reply,
+        history: nextHistory,
+      });
     } catch (error) {
       if (requestId !== requestIdRef.current || (error instanceof DOMException && error.name === 'AbortError')) return;
       const fallback = buildFallbackChatReply(userMessage, productContext, storeContext);
@@ -166,16 +311,17 @@ export const FloatingChatWidget = forwardRef<FloatingChatWidgetRef, FloatingChat
     }
   };
 
+  const handleSuggestionClick = (suggestion: string) => {
+    selectedSuggestionsRef.current.add(suggestion);
+    void requestBotReply(suggestion);
+  };
+
   useImperativeHandle(ref, () => ({
     openChat: () => {
-      setContextProduct(null);
-      setMessages([{ sender: 'bot', text: 'Halo! Ada yang bisa saya bantu terkait produk?' }]);
-      setIsOpen(true);
+      openWithContext(pageContext);
     },
     askAboutProduct: (product: Product) => {
-      setContextProduct(product);
-      setIsOpen(true);
-      void requestBotReply(`Tolong jelaskan produk "${product.name}".`, product);
+      openWithContext('product', product);
     },
   }));
 
@@ -193,9 +339,7 @@ export const FloatingChatWidget = forwardRef<FloatingChatWidgetRef, FloatingChat
       setIsOpen(false);
       return;
     }
-    setContextProduct(null);
-    setMessages([{ sender: 'bot', text: 'Halo! Ada yang bisa saya bantu terkait produk?' }]);
-    setIsOpen(true);
+    openWithContext(pageContext);
   };
 
   return (
@@ -244,6 +388,30 @@ export const FloatingChatWidget = forwardRef<FloatingChatWidgetRef, FloatingChat
                   <DotLottieReact src="https://lottie.host/c0ff9600-dd79-4a92-91d2-da4986399c36/rc8EdQGXyJ.json" loop autoplay className="h-8 w-8 object-contain" />
                 </div>
                 <div className="rounded-2xl rounded-bl-none border border-gray-200 bg-white px-3.5 py-2.5 text-xs text-gray-500 shadow-sm">Asisten sedang menyiapkan jawaban...</div>
+              </div>
+            )}
+            {!isReplying && (isLoadingSuggestions || suggestions.length > 0) && (
+              <div className="ml-11 pt-1">
+                <p className="mb-2 text-[10px] font-semibold uppercase tracking-wide text-gray-500">Rekomendasi pertanyaan</p>
+                {suggestions.length === 0 ? (
+                  <p className="text-xs text-gray-500">Menyiapkan rekomendasi...</p>
+                ) : (
+                  <>
+                    <div className="flex flex-wrap gap-2">
+                      {suggestions.map((suggestion) => (
+                        <button
+                          key={suggestion}
+                          type="button"
+                          onClick={() => handleSuggestionClick(suggestion)}
+                          className="rounded-full border border-[#963E1B]/25 bg-white px-3 py-1.5 text-left text-[11px] font-medium text-[#803214] transition-colors hover:bg-[#FFF4ED]"
+                        >
+                          {suggestion}
+                        </button>
+                      ))}
+                    </div>
+                    {isLoadingSuggestions && <p className="mt-2 text-[10px] text-gray-400">Menyesuaikan rekomendasi...</p>}
+                  </>
+                )}
               </div>
             )}
           </div>

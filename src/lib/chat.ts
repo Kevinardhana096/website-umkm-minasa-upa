@@ -107,6 +107,7 @@ function asksForPrice(message: string) {
 }
 
 function asksForAvailability(message: string) {
+  if (/\b(?:varian|variasi|rasa|ukuran|warna|pilihan)\b/i.test(message)) return false;
   return /stok|tersedia|ready|ketersediaan|habis/i.test(message);
 }
 
@@ -253,7 +254,7 @@ export function buildFallbackChatReply(
 
   return {
     reply: product
-      ? `Produk "${product.name}" dari ${product.merchantName} memiliki harga ${formatRupiah(product.price)}. Untuk informasi stok terbaru, detail pesanan, atau negosiasi harga, silakan hubungi penjual langsung melalui WhatsApp.`
+      ? `Maaf, informasi yang Anda tanyakan tentang "${product.name}" belum dapat disiapkan saat ini. Silakan coba lagi atau hubungi penjual untuk memastikan detail tersebut.`
       : "Silakan pilih produk untuk melihat detailnya, atau tanyakan informasi umum tentang katalog UMKM Wanita Tangguh Minasa Upa.",
     whatsappNumber: shouldAttachWhatsapp
       ? product?.whatsappNumber?.trim() || store?.whatsappNumber?.trim() || undefined

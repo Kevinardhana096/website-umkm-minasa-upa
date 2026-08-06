@@ -311,7 +311,7 @@ export const ProductDetailModal: React.FC<ProductDetailModalProps> = ({
             {/* CTAs Footer - Sticky on Mobile */}
             <div className="sticky bottom-0 bg-white/95 backdrop-blur-md mt-6 pt-3 pb-2 -mx-6 px-6 md:mx-0 md:px-0 md:pt-4 border-t border-gray-100 flex items-center gap-2 sm:gap-3 z-30 shadow-xs md:shadow-none">
               <button
-                onClick={() => { if (onAskBot) onAskBot(product); onClose(); }}
+                onClick={() => { onAskBot?.(product); }}
                 className="flex-1 py-3 sm:py-3.5 px-3 sm:px-4 rounded-xl sm:rounded-2xl border border-gray-200 bg-gray-50 hover:bg-gray-100 font-semibold text-gray-800 text-xs sm:text-sm flex items-center justify-center gap-1.5 sm:gap-2 transition-all duration-200 hover:shadow-sm cursor-pointer"
               >
                 <Bot className="w-4 h-4 text-[#963E1B] shrink-0" />

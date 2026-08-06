@@ -1,7 +1,8 @@
 import { expect, test, type APIRequestContext } from "@playwright/test";
 import { buildPublicKnowledgeReply, getPublicKnowledgeContext, getPublicKnowledgeMetadata } from "../../src/lib/knowledge";
 import { buildWebsiteHelpReply } from "../../src/lib/site-knowledge";
-import { buildProductListReply, isProductListRequest } from "../../src/lib/chat";
+import { buildDirectChatReply, buildProductListReply, isProductListRequest } from "../../src/lib/chat";
+import { getHttpProviderFailure, shouldFallbackToMistral } from "../../src/lib/chat-provider-policy";
 
 async function ask(request: APIRequestContext, message: string, extra: Record<string, unknown> = {}) {
   const response = await request.post("/api/chat", {
@@ -13,6 +14,19 @@ async function ask(request: APIRequestContext, message: string, extra: Record<st
 }
 
 test.describe("chat policy", () => {
+  test("Mistral hanya menjadi fallback Gemini untuk quota", () => {
+    const quotaFailure = getHttpProviderFailure(429);
+    const timeoutFailure = getHttpProviderFailure(408);
+    const serverFailure = getHttpProviderFailure(503);
+    const authFailure = getHttpProviderFailure(401);
+
+    expect(shouldFallbackToMistral("gemini", "mistral", quotaFailure)).toBe(true);
+    expect(shouldFallbackToMistral("gemini", "mistral", timeoutFailure)).toBe(false);
+    expect(shouldFallbackToMistral("gemini", "mistral", serverFailure)).toBe(false);
+    expect(shouldFallbackToMistral("gemini", "mistral", authFailure)).toBe(false);
+    expect(shouldFallbackToMistral("mistral", undefined, quotaFailure)).toBe(false);
+  });
+
   test("pertanyaan daftar produk diarahkan ke daftar katalog", () => {
     expect(isProductListRequest("Apa saja produk yang ada di website ini?")).toBe(true);
     expect(isProductListRequest("Tampilkan daftar produk yang tersedia")).toBe(true);
@@ -35,6 +49,27 @@ test.describe("chat policy", () => {
     expect(response.source).toBe("catalog");
     expect(response.reply).toContain("Keripik Pisang");
     expect(response.reply).toContain("Rp15.000");
+  });
+
+  test("pertanyaan varian yang tersedia bukan pertanyaan status stok produk", () => {
+    const product = {
+      id: "sambal-kemasan",
+      name: "Sambal Kemasan",
+      merchantName: "UMKM Minasa Upa",
+      description: "Sambal kemasan dengan beberapa pilihan rasa.",
+      price: 20_000,
+      isAvailable: true,
+      whatsappNumber: "628123456789",
+    };
+    const variantResponse = buildDirectChatReply("Apa saja varian rasa Sambal Kemasan yang tersedia?", product);
+    const materialResponse = buildDirectChatReply("Apa bahan utama sambal ini?", product);
+    const availabilityResponse = buildDirectChatReply("Apakah Sambal Kemasan masih tersedia?", product);
+    const orderingResponse = buildDirectChatReply("Bagaimana cara memesan Sambal Kemasan?", product);
+
+    expect(variantResponse).toBeNull();
+    expect(materialResponse).toBeNull();
+    expect(availabilityResponse?.reply).toContain("ditandai tersedia");
+    expect(orderingResponse?.reply).toContain("membeli atau memesan");
   });
 
   test("pertanyaan memilih toko di katalog tidak diarahkan ke bantuan akun", () => {
@@ -140,6 +175,84 @@ test.describe("chat policy", () => {
     await expect(chat).toContainText("Batas pertanyaan sementara tercapai");
     await expect(input).toBeDisabled();
     await expect(input).toHaveAttribute("placeholder", /Coba lagi dalam 5 detik/);
+  });
+
+  test("widget menampilkan rekomendasi lanjutan setelah jawaban", async ({ page }) => {
+    let followUpRequestSeen = false;
+    await page.route("**/api/chat", async (route) => {
+      const body = route.request().postDataJSON() as {
+        action?: string;
+        last_question?: string;
+        last_answer?: string;
+      };
+      if (body.action === "suggestions" && body.last_question && body.last_answer) {
+        followUpRequestSeen = true;
+        await route.fulfill({
+          status: 200,
+          contentType: "application/json",
+          body: JSON.stringify({
+            suggestions: ["Kapan kelompok ini didirikan?", "Berapa jumlah anggotanya?", "Di mana lokasi kelompok ini?"],
+            source: "ai",
+          }),
+        });
+        return;
+      }
+      if (body.action === "suggestions") {
+        await route.fulfill({
+          status: 200,
+          contentType: "application/json",
+          body: JSON.stringify({
+            suggestions: ["Apa itu kelompok UMKM ini?", "Kapan kelompok ini didirikan?", "Berapa jumlah anggotanya?"],
+            source: "ai",
+          }),
+        });
+        return;
+      }
+      await route.fulfill({
+        status: 200,
+        contentType: "application/json",
+        body: JSON.stringify({ reply: "Kelompok ini adalah kelompok usaha bersama perempuan di Minasa Upa.", source: "ai" }),
+      });
+    });
+
+    await page.goto("/profil");
+    await page.getByRole("button", { name: "Buka chat" }).click();
+    const chat = page.getByRole("dialog", { name: "Asisten UMKM Bot" });
+    await chat.getByRole("button", { name: "Apa itu kelompok UMKM ini?" }).click();
+
+    await expect(chat).toContainText("Kelompok ini adalah kelompok usaha bersama");
+    await expect(chat.getByRole("button", { name: "Di mana lokasi kelompok ini?" })).toBeVisible();
+    expect(followUpRequestSeen).toBe(true);
+  });
+
+  test("Tanya AI dari detail hanya membuka rekomendasi kontekstual", async ({ page }) => {
+    let answerRequests = 0;
+    await page.route("**/api/chat", async (route) => {
+      const body = route.request().postDataJSON() as { action?: string };
+      if (body.action !== "suggestions") answerRequests += 1;
+      await route.fulfill({
+        status: 200,
+        contentType: "application/json",
+        body: JSON.stringify(body.action === "suggestions"
+          ? { suggestions: ["Apa bahan utama produk ini?", "Bagaimana proses pembuatannya?", "Apa keunggulan produk ini?"], source: "ai" }
+          : { reply: "Jawaban yang tidak seharusnya diminta otomatis.", source: "ai" }),
+      });
+    });
+
+    await page.goto("/katalog");
+    const detailButton = page.getByRole("button", { name: /Lihat detail / }).first();
+    if (await detailButton.count() === 0) {
+      test.skip(true, "Tidak ada produk publik untuk pengujian detail produk.");
+      return;
+    }
+
+    await detailButton.click();
+    await page.getByRole("button", { name: "Tanya AI", exact: true }).click();
+    const chat = page.getByRole("dialog", { name: "Asisten UMKM Bot" });
+
+    await expect(chat.getByRole("button", { name: "Apa bahan utama produk ini?" })).toBeVisible();
+    await expect(chat).not.toContainText("Tolong jelaskan produk");
+    expect(answerRequests).toBe(0);
   });
 
   test("memesan dan membeli memakai jawaban pembelian yang sama", async ({ request }) => {

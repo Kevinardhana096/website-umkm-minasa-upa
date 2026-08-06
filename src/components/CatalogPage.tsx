@@ -3,7 +3,7 @@
 import React, { useState, useMemo, useRef, useEffect } from 'react';
 import dynamic from 'next/dynamic';
 import Image from 'next/image';
-import { CheckCircle2, ShoppingBag, ChevronRight, ChevronLeft, Sparkles, Star, ArrowRight } from 'lucide-react';
+import { ShoppingBag, ChevronRight, ChevronLeft, Sparkles, Star, ArrowRight } from 'lucide-react';
 import { Navbar } from './Navbar';
 import { HeroSection } from './HeroSection';
 import { ProductGrid } from './ProductGrid';
@@ -447,7 +447,7 @@ export const CatalogPage: React.FC<CatalogPageProps> = ({
       )}
 
       {/* Floating Chat Widget */}
-      <FloatingChatWidget ref={chatWidgetRef} />
+      <FloatingChatWidget ref={chatWidgetRef} store={store} pageContext="catalog" />
     </div>
   );
 };
