@@ -335,7 +335,7 @@ export const CatalogPage: React.FC<CatalogPageProps> = ({
                             {product.merchantName}
                           </span>
                         </div>
-                        <h3 className="text-xs sm:text-sm font-bold text-gray-900 group-hover:text-[#0F2C23] transition-colors mt-1 line-clamp-1">
+                        <h3 className="text-xs sm:text-sm font-bold text-gray-900 group-hover:text-[#0F2C23] transition-colors mt-1 line-clamp-1 sm:line-clamp-2">
                           {product.name}
                         </h3>
                         {product.description && (
@@ -346,10 +346,10 @@ export const CatalogPage: React.FC<CatalogPageProps> = ({
                       </div>
 
                       {/* Footer Price & Action CTA */}
-                      <div className="mt-3 pt-2.5 border-t border-gray-100/80 flex items-center justify-between gap-1">
-                        <div className="flex flex-col">
-                          <span className="text-[9px] text-gray-400 uppercase font-semibold">Harga</span>
-                          <span className="text-xs sm:text-sm font-black text-[#963E1B]">
+                      <div className="mt-3 pt-2.5 border-t border-gray-100/80 flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between sm:gap-1">
+                        <div className="flex flex-col min-w-0">
+                          <span className="text-[9px] sm:text-[10px] text-gray-400 uppercase font-semibold tracking-wider">Harga</span>
+                          <span className="text-xs sm:text-sm font-black text-[#963E1B] truncate">
                             {formatRupiah(product.price)}
                           </span>
                         </div>
@@ -360,7 +360,7 @@ export const CatalogPage: React.FC<CatalogPageProps> = ({
                             e.stopPropagation();
                             setSelectedProduct(product);
                           }}
-                          className="px-2.5 py-1.5 rounded-xl bg-[#0F2C23] text-white hover:bg-[#963E1B] text-[11px] font-semibold flex items-center gap-1 shadow-2xs transition-all group-hover:shadow-md cursor-pointer"
+                          className="w-full sm:w-auto px-3 py-1.5 rounded-xl bg-[#0F2C23] text-white hover:bg-[#963E1B] active:scale-[0.98] text-[11px] font-semibold flex items-center justify-center gap-1.5 shadow-2xs transition-all group-hover:shadow-md cursor-pointer shrink-0"
                           title="Lihat Detail Produk"
                         >
                           <span>Detail</span>
