@@ -50,7 +50,7 @@ const EMPTY_FORM: UserFormState = {
   email: "",
   password: "",
   password_confirmation: "",
-  role: "toko",
+  role: "anggota",
 };
 
 function isBanned(user: AdminUser) {
@@ -368,9 +368,9 @@ export function AdminUserManagement() {
                   onChange={(event) => setForm((current) => ({ ...current, role: event.target.value as Role }))}
                   className="mt-1.5 w-full rounded-xl border border-gray-200 bg-white px-3.5 py-2.5 text-sm font-semibold text-gray-700 outline-none focus:border-[#0F2C23] focus:ring-1 focus:ring-[#0F2C23]"
                 >
-                  <option value="toko">Toko</option>
                   <option value="admin">Admin</option>
                   <option value="anggota">Anggota</option>
+                  <option value="toko">Toko</option>
                 </select>
               </div>
 
