@@ -64,12 +64,14 @@ export const Footer: React.FC<FooterProps> = ({ store }) => {
         </div>
 
         {/* Institutional Partner Logos */}
-        <div className="mt-10 pt-8 border-t border-gray-300/60 flex flex-col sm:flex-row items-center justify-between gap-6">
+        <div className="mt-10 pt-8 border-t border-gray-300/60 flex flex-col items-center text-center sm:items-start sm:text-left md:flex-row md:justify-between gap-6">
           <div>
             <p className="text-xs font-bold text-gray-800 uppercase tracking-wide">Lembaga & Mitra Pendukung</p>
             <p className="text-xs text-gray-500 mt-0.5">Program Digitalisasi & Pengabdian Masyarakat UMKM</p>
           </div>
-          <InstitutionalLogos imageClassName="h-12 sm:h-16 w-auto object-contain" />
+          <div className="w-full md:w-auto flex justify-center md:justify-end overflow-hidden">
+            <InstitutionalLogos imageClassName="h-8 sm:h-12 md:h-14 w-auto max-w-full object-contain" />
+          </div>
         </div>
 
         {/* Bottom Bar */}

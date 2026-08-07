@@ -19,7 +19,7 @@ export const InstitutionalLogos: React.FC<InstitutionalLogosProps> = ({
   imageClassName = "h-6 sm:h-8 md:h-9 w-auto object-contain",
 }) => {
   return (
-    <div className={`flex items-center gap-1.5 sm:gap-2.5 ${className}`}>
+    <div className={`flex flex-wrap items-center justify-center gap-1.5 sm:gap-2.5 ${className}`}>
       {institutionalLogos.map((logo, index) => (
         <Image
           key={index}
