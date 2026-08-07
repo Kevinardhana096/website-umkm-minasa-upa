@@ -254,7 +254,7 @@ export const ProfilPage: React.FC<ProfilPageProps> = ({ store = null, products =
               <div className="flex flex-wrap gap-2.5 pt-3">
                 <span className="px-3.5 py-1.5 rounded-full bg-gray-100 text-gray-800 text-xs font-medium border border-gray-200/80 flex items-center gap-1.5">
                   <CheckCircle2 className="w-3.5 h-3.5 text-gray-700" />
-                  13 Anggota Perempuan
+                  14 Anggota Perempuan
                 </span>
                 <span className="px-3.5 py-1.5 rounded-full bg-gray-100 text-gray-800 text-xs font-medium border border-gray-200/80 flex items-center gap-1.5">
                   <CheckCircle2 className="w-3.5 h-3.5 text-gray-700" />
