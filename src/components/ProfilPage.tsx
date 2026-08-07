@@ -20,35 +20,18 @@ import { ProductDetailModal } from './ProductDetailModal';
 import { formatRupiah, type CatalogStore } from '@/lib/products';
 import type { Product } from '@/types/product';
 import { MarkdownContent } from './MarkdownContent';
+import { FALLBACK_HERO_SLIDES, type HeroSlide } from '@/lib/hero-slide-types';
 
 interface ProfilPageProps {
   store?: CatalogStore | null;
   products?: Product[];
+  heroSlides?: HeroSlide[];
 }
 
-export const ProfilPage: React.FC<ProfilPageProps> = ({ store = null, products = [] }) => {
+export const ProfilPage: React.FC<ProfilPageProps> = ({ store = null, products = [], heroSlides = FALLBACK_HERO_SLIDES }) => {
   const chatWidgetRef = useRef<FloatingChatWidgetRef>(null);
   const featuredScrollRef = useRef<HTMLDivElement>(null);
   const [selectedProduct, setSelectedProduct] = useState<Product | null>(null);
-
-  const heroSlides = [
-    {
-      src: '/carousel/pexels-craft-group.jpeg',
-      alt: 'Perempuan mengerjakan kerajinan tangan di ruang produksi',
-    },
-    {
-      src: '/carousel/pexels-craft-studio.jpeg',
-      alt: 'Dua perajin perempuan membuat produk kerajinan tangan',
-    },
-    {
-      src: '/carousel/pexels-food-stand.jpeg',
-      alt: 'Perempuan menyiapkan makanan di stan kuliner',
-    },
-    {
-      src: '/carousel/pexels-food-market.jpeg',
-      alt: 'Aktivitas kuliner di pasar makanan',
-    },
-  ];
 
   const [currentSlide, setCurrentSlide] = useState(0);
 

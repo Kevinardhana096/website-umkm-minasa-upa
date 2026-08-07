@@ -1,20 +1,21 @@
 "use client";
 
 import { useMemo, useState } from "react";
-import { ArrowLeft, CheckCircle2, Edit, Eye, LayoutDashboard, LogOut, Menu, Package, PackageSearch, Search, Store, Trash2, Users, X, XCircle } from "lucide-react";
+import { ArrowLeft, CheckCircle2, Edit, Eye, Images, LayoutDashboard, LogOut, Menu, Package, PackageSearch, Search, Store, Trash2, Users, X, XCircle } from "lucide-react";
 import { useRouter } from "next/navigation";
 import { createClient } from "@/lib/supabase/client";
 import type { AdminMonitoringData, AdminProductSummary, AdminStoreSummary } from "@/lib/admin-service";
 import { AdminUserManagement } from "@/components/admin/AdminUserManagement";
 import { AdminProductMonitoring } from "@/components/admin/AdminProductMonitoring";
 import { TransferProductModal } from "@/components/admin/TransferProductModal";
+import { AdminHeroCarousel } from "@/components/admin/AdminHeroCarousel";
 import { AdminStoreEditModal } from "@/components/admin/AdminStoreEditModal";
 import { ProductFormModal } from "@/components/dashboard/ProductFormModal";
 import { MAX_FEATURED_PRODUCTS } from "@/lib/products";
 import type { NewProductInput, StoreProfileInput } from "@/lib/store-service";
 
 type StatusFilter = "semua" | "aktif" | "nonaktif";
-type AdminSection = "monitoring" | "products" | "users";
+type AdminSection = "monitoring" | "products" | "hero" | "users";
 
 interface AdminDashboardClientProps {
   initialData: AdminMonitoringData;
@@ -203,10 +204,10 @@ export function AdminDashboardClient({ initialData }: AdminDashboardClientProps)
             <div>
               <p className="text-xs font-extrabold uppercase tracking-wider text-[#0F2C23]">Platform Admin</p>
               <h1 className="mt-0.5 text-xl font-black tracking-tight text-gray-900 sm:text-2xl">
-                {activeSection === "monitoring" ? "Monitoring Seluruh Toko" : activeSection === "products" ? "Monitoring Seluruh Produk" : "Manajemen User"}
+                {activeSection === "monitoring" ? "Monitoring Seluruh Toko" : activeSection === "products" ? "Monitoring Seluruh Produk" : activeSection === "hero" ? "Carousel Hero" : "Manajemen User"}
               </h1>
               <p className="hidden text-xs text-gray-500 sm:block sm:text-sm">
-                {activeSection === "monitoring" ? "Ringkasan katalog dan status produk seluruh mitra UMKM." : activeSection === "products" ? "Pantau produk, toko pemilik, dan status katalog seluruh mitra." : "Kelola akses login dan role pengguna platform."}
+                {activeSection === "monitoring" ? "Ringkasan katalog dan status produk seluruh mitra UMKM." : activeSection === "products" ? "Pantau produk, toko pemilik, dan status katalog seluruh mitra." : activeSection === "hero" ? "Atur foto besar yang tampil pada Beranda dan halaman Profil." : "Kelola akses login dan role pengguna platform."}
               </p>
             </div>
 
@@ -241,6 +242,9 @@ export function AdminDashboardClient({ initialData }: AdminDashboardClientProps)
             <button type="button" onClick={() => setActiveSection("products")} className={`inline-flex items-center gap-2 rounded-xl px-4 py-2 text-sm font-bold transition ${activeSection === "products" ? "bg-[#0F2C23] text-white" : "text-gray-600 hover:bg-gray-100/80"}`}>
               <PackageSearch className="h-4 w-4" /> Monitoring produk
             </button>
+            <button type="button" onClick={() => setActiveSection("hero")} className={`inline-flex items-center gap-2 rounded-xl px-4 py-2 text-sm font-bold transition ${activeSection === "hero" ? "bg-[#0F2C23] text-white" : "text-gray-600 hover:bg-gray-100/80"}`}>
+              <Images className="h-4 w-4" /> Carousel Hero
+            </button>
             <button type="button" onClick={() => setActiveSection("users")} className={`inline-flex items-center gap-2 rounded-xl px-4 py-2 text-sm font-bold transition ${activeSection === "users" ? "bg-[#0F2C23] text-white" : "text-gray-600 hover:bg-gray-100/80"}`}>
               <Users className="h-4 w-4" /> Manajemen user
             </button>
@@ -265,6 +269,13 @@ export function AdminDashboardClient({ initialData }: AdminDashboardClientProps)
                 className={`flex items-center gap-3 rounded-xl px-3.5 py-3 text-sm font-bold transition ${activeSection === "products" ? "bg-[#0F2C23] text-white" : "bg-gray-50 text-gray-700 hover:bg-gray-100"}`}
               >
                 <PackageSearch className="h-4.5 w-4.5" /> Monitoring produk
+              </button>
+              <button
+                type="button"
+                onClick={() => { setActiveSection("hero"); setIsMobileMenuOpen(false); }}
+                className={`flex items-center gap-3 rounded-xl px-3.5 py-3 text-sm font-bold transition ${activeSection === "hero" ? "bg-[#0F2C23] text-white" : "bg-gray-50 text-gray-700 hover:bg-gray-100"}`}
+              >
+                <Images className="h-4.5 w-4.5" /> Carousel Hero
               </button>
               <button
                 type="button"
@@ -346,7 +357,7 @@ export function AdminDashboardClient({ initialData }: AdminDashboardClientProps)
             </div>
           )}
         </section>
-        </> : activeSection === "products" ? <AdminProductMonitoring products={initialData.products} onEdit={setEditingProduct} onDelete={handleDeleteProduct} onTransfer={setTransferringProducts} pendingAction={pendingCatalogAction} /> : <AdminUserManagement />}
+        </> : activeSection === "products" ? <AdminProductMonitoring products={initialData.products} onEdit={setEditingProduct} onDelete={handleDeleteProduct} onTransfer={setTransferringProducts} pendingAction={pendingCatalogAction} /> : activeSection === "hero" ? <AdminHeroCarousel /> : <AdminUserManagement />}
       </div>
 
       <AdminStoreEditModal
