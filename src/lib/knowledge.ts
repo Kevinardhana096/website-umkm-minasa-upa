@@ -40,7 +40,7 @@ const PUBLIC_KNOWLEDGE_ENTRIES: PublicKnowledgeEntry[] = [
   {
     id: "group-profile",
     intent: "group",
-    text: "Kelompok UMKM Wanita Tangguh Minasa Upa adalah kelompok usaha bersama yang berdiri sejak 2020 dan terdiri dari 13 perempuan usia produktif.",
+    text: "Kelompok UMKM Wanita Tangguh Minasa Upa adalah kelompok usaha bersama yang berdiri sejak 2020 dan terdiri dari 14 perempuan usia produktif.",
   },
   {
     id: "group-background-and-purpose",

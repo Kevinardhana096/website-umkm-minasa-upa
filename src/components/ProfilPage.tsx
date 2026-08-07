@@ -164,7 +164,7 @@ export const ProfilPage: React.FC<ProfilPageProps> = ({ store = null, products =
 
               {/* Subtitle */}
               <p className="mx-auto mt-5 max-w-2xl font-serif text-[clamp(0.875rem,2.2vw,1.25rem)] font-medium leading-6 tracking-[0.01em] text-white/90 drop-shadow-[0_2px_6px_rgba(0,0,0,0.5)] sm:mt-6 sm:leading-9 lg:mt-7 lg:max-w-3xl">
-                Kelompok usaha bersama 13 perempuan Minasa Upa yang mengembangkan pangan olahan khas daerah melalui penguatan pemasaran digital dan identitas merek.
+                Kelompok usaha bersama 14 perempuan Minasa Upa yang mengembangkan pangan olahan khas daerah melalui penguatan pemasaran digital dan identitas merek.
               </p>
             </div>
           </div>
@@ -240,7 +240,7 @@ export const ProfilPage: React.FC<ProfilPageProps> = ({ store = null, products =
 
               <div className="space-y-4 text-sm sm:text-base text-gray-600 leading-relaxed">
                 <p>
-                  Kelompok UMKM Wanita Tangguh Minasa Upa terbentuk dari semangat para ibu rumah tangga dan perempuan kreatif di wilayah Minasa Upa yang ingin meningkatkan kemandirian ekonomi keluarga. Kelompok usaha bersama ini berdiri sejak 2020 dan beranggotakan 13 perempuan usia produktif.
+                  Kelompok UMKM Wanita Tangguh Minasa Upa terbentuk dari semangat para ibu rumah tangga dan perempuan kreatif di wilayah Minasa Upa yang ingin meningkatkan kemandirian ekonomi keluarga. Kelompok usaha bersama ini berdiri sejak 2020 dan beranggotakan 14 perempuan usia produktif.
                 </p>
                 <p>
                   Melalui keterampilan di bidang makanan, minuman, dan kerajinan, kelompok ini hadir sebagai wadah kolaborasi untuk mengembangkan usaha kecil secara bersama-sama.
