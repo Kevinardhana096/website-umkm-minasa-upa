@@ -1,6 +1,6 @@
 import { CatalogPage } from '@/components/CatalogPage';
 import { PublicCatalogAutoRefresh } from '@/components/PublicCatalogAutoRefresh';
-import { getPublicCatalog } from '@/lib/catalog';
+import { getAdminCatalog, getPublicCatalog } from '@/lib/catalog';
 import { mockProducts } from '@/data/mockProducts';
 import { createClient } from '@/lib/supabase/server';
 import type { Product } from '@/types/product';
@@ -35,9 +35,9 @@ function getCatalogProductsKey(products: Product[]) {
 }
 
 export default async function Katalog() {
-  // Catalog and session data are independent, so start both network requests
-  // together instead of serializing them on every navigation.
-  const [catalog, viewer] = await Promise.all([getPublicCatalog(), getViewer()]);
+  const viewer = await getViewer();
+  const adminCatalog = viewer.role === 'admin' ? await getAdminCatalog() : null;
+  const catalog = adminCatalog ?? await getPublicCatalog();
   const demoProducts = process.env.NODE_ENV !== 'production' && catalog === null ? mockProducts : [];
   const catalogProducts = catalog?.products ?? demoProducts;
 
@@ -48,6 +48,7 @@ export default async function Katalog() {
         initialProducts={catalogProducts}
         store={catalog?.store ?? null}
         storeOptions={catalog?.stores ?? []}
+        adminProductRows={adminCatalog?.productRows ?? []}
         viewerRole={viewer.role}
         viewerUserId={viewer.userId}
       />

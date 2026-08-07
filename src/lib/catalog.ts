@@ -1,13 +1,18 @@
-import { createClient } from "@supabase/supabase-js";
+import { createClient as createPublicClient } from "@supabase/supabase-js";
 import { revalidatePath, revalidateTag, unstable_cache } from "next/cache";
 import { mapProductRow, normalizeProductRows, PRODUCT_SELECT, type CatalogStore, type CatalogStoreOption, type ProductQueryRow, type StoreRow } from "@/lib/products";
 import type { Product } from "@/types/product";
+import { createClient as createServerClient } from "@/lib/supabase/server";
 
 export interface PublicCatalogData {
   products: Product[];
   store: CatalogStore | null;
   stores: CatalogStoreOption[];
   status: "available" | "unavailable";
+}
+
+export interface AdminCatalogData extends PublicCatalogData {
+  productRows: ReturnType<typeof normalizeProductRows>;
 }
 
 export const PUBLIC_CATALOG_CACHE_TAG = "public-catalog";
@@ -26,7 +31,7 @@ async function fetchPublicCatalog(): Promise<PublicCatalogData | null> {
   if (!supabaseUrl || !supabaseKey) return null;
 
   try {
-    const supabase = createClient(supabaseUrl, supabaseKey, {
+    const supabase = createPublicClient(supabaseUrl, supabaseKey, {
       auth: { autoRefreshToken: false, persistSession: false },
     });
     const { data: stores, error: storeError } = await supabase
@@ -83,3 +88,46 @@ export const getPublicCatalog = unstable_cache(fetchPublicCatalog, [PUBLIC_CATAL
   revalidate: 60,
   tags: [PUBLIC_CATALOG_CACHE_TAG],
 });
+
+export async function getAdminCatalog(): Promise<AdminCatalogData | null> {
+  try {
+    const supabase = await createServerClient();
+    const [storesResult, productsResult] = await Promise.all([
+      supabase
+        .from("stores")
+        .select("id, owner_id, name, seller_name, description, whatsapp_number, is_active")
+        .order("created_at", { ascending: true })
+        .returns<StoreRow[]>(),
+      supabase
+        .from("products")
+        .select(PRODUCT_SELECT)
+        .order("created_at", { ascending: false })
+        .limit(500)
+        .returns<ProductQueryRow[]>(),
+    ]);
+    if (storesResult.error || productsResult.error) throw storesResult.error ?? productsResult.error;
+
+    const stores = storesResult.data ?? [];
+    const storeById = new Map(stores.map((store) => [store.id, store]));
+    const productRows = normalizeProductRows(productsResult.data).flatMap((row) => {
+      const store = storeById.get(row.store_id);
+      return store ? [{ ...row, store_name: store.name }] : [];
+    });
+
+    return {
+      products: productRows.flatMap((row) => {
+        const store = storeById.get(row.store_id);
+        return store ? [mapProductRow(row, store, process.env.NEXT_PUBLIC_SUPABASE_URL)] : [];
+      }),
+      productRows,
+      store: stores.length === 1
+        ? { name: stores[0].name, sellerName: stores[0].seller_name, description: stores[0].description ?? "Katalog produk UMKM lokal.", whatsappNumber: stores[0].whatsapp_number }
+        : null,
+      stores: stores.map((store) => ({ id: store.id, name: store.name, sellerName: store.seller_name, whatsappNumber: store.whatsapp_number })),
+      status: "available",
+    };
+  } catch (error) {
+    console.error("Gagal memuat katalog admin Supabase", error);
+    return null;
+  }
+}

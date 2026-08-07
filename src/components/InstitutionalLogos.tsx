@@ -8,9 +8,10 @@ interface InstitutionalLogosProps {
 
 export const institutionalLogos = [
   { src: "/tut_wuri.png", alt: "Tut Wuri Handayani" },
-  { src: "/ditjen_risbang.png", alt: "Ditjen Risbang" },
+  { src: "/bima_dikti.png", alt: "BIMA Dikti" },
   { src: "/diktisaintek.png", alt: "Diktisaintek Berdampak" },
   { src: "/unhas.png", alt: "Logo Unhas" },
+  { src: "/logo-kalla.png", alt: "Logo Kalla" },
 ];
 
 export const InstitutionalLogos: React.FC<InstitutionalLogosProps> = ({

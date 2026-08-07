@@ -1,6 +1,7 @@
 'use client';
 
 import React, { useState, useMemo, useRef, useEffect } from 'react';
+import { useRouter } from 'next/navigation';
 import dynamic from 'next/dynamic';
 import Image from 'next/image';
 import { ShoppingBag, ChevronRight, ChevronLeft, Sparkles, Star, ArrowRight } from 'lucide-react';
@@ -25,6 +26,7 @@ interface CatalogPageProps {
   initialProducts?: Product[];
   store?: CatalogStore | null;
   storeOptions?: CatalogStoreOption[];
+  adminProductRows?: ProductRow[];
   viewerRole?: 'toko' | 'admin' | 'anggota';
   viewerUserId?: string;
 }
@@ -33,12 +35,15 @@ export const CatalogPage: React.FC<CatalogPageProps> = ({
   initialProducts = mockProducts,
   store = null,
   storeOptions = [],
+  adminProductRows: initialAdminProductRows = [],
   viewerRole,
   viewerUserId,
 }) => {
+  const router = useRouter();
   const [products, setProducts] = useState(initialProducts);
   const [, setMemberStores] = useState(storeOptions);
   const [memberProductRows, setMemberProductRows] = useState<ProductRow[]>([]);
+  const [adminProductRows, setAdminProductRows] = useState<ProductRow[]>(initialAdminProductRows);
   const [searchQuery, setSearchQuery] = useState('');
   const [selectedProduct, setSelectedProduct] = useState<Product | null>(null);
   const [isMemberFormOpen, setIsMemberFormOpen] = useState(false);
@@ -46,6 +51,9 @@ export const CatalogPage: React.FC<CatalogPageProps> = ({
   const [isMemberSaving, setIsMemberSaving] = useState(false);
   const [memberMessage, setMemberMessage] = useState('');
   const [memberError, setMemberError] = useState('');
+  const [isAdminFormOpen, setIsAdminFormOpen] = useState(false);
+  const [editingAdminProduct, setEditingAdminProduct] = useState<ProductRow | null>(null);
+  const [isAdminSaving, setIsAdminSaving] = useState(false);
 
   const chatWidgetRef = useRef<FloatingChatWidgetRef>(null);
   const featuredScrollRef = useRef<HTMLDivElement>(null);
@@ -54,6 +62,7 @@ export const CatalogPage: React.FC<CatalogPageProps> = ({
   const featuredProducts = useMemo(() => {
     return products.filter((product) => product.isFeatured === true).slice(0, 4);
   }, [products]);
+  const featuredProductCount = useMemo(() => products.filter((product) => product.isFeatured === true).length, [products]);
 
   // Auto-scroll carousel for featured products in Catalog Page
   useEffect(() => {
@@ -242,6 +251,79 @@ export const CatalogPage: React.FC<CatalogPageProps> = ({
     }
   };
 
+  const openAdminAddForm = () => {
+    setEditingAdminProduct(null);
+    setMemberMessage('');
+    setMemberError('');
+    setIsAdminFormOpen(true);
+  };
+
+  const handleAdminSave = async (input: NewProductInput) => {
+    const store = storeOptions.find((option) => option.name === input.storeName);
+    if (!store) throw new Error('Pilih toko tujuan yang tersedia.');
+
+    setIsAdminSaving(true);
+    setMemberError('');
+    setMemberMessage('');
+    try {
+      const formData = new FormData();
+      formData.append('resource', 'product');
+      formData.append('store_id', editingAdminProduct?.store_id ?? store.id);
+      if (editingAdminProduct) formData.append('id', editingAdminProduct.id);
+      formData.append('name', input.name);
+      formData.append('category', input.category);
+      formData.append('description', input.description);
+      formData.append('whatsapp_number', input.whatsappNumber);
+      formData.append('price', input.price === null ? '' : String(input.price));
+      formData.append('is_available', String(input.isAvailable));
+      formData.append('is_visible', String(input.isVisible));
+      formData.append('is_featured', String(input.isFeatured));
+      formData.append('images', JSON.stringify((input.images ?? []).map((image) => ({ id: image.id, image_path: image.imagePath, is_primary: image.isPrimary === true }))));
+      (input.images ?? []).forEach((image, index) => {
+        if (image.imageFile) formData.append(`image_file_${index}`, image.imageFile);
+      });
+
+      const response = await fetch('/api/admin/catalog', { method: editingAdminProduct ? 'PATCH' : 'POST', body: formData });
+      const payload = await response.json().catch(() => ({}));
+      if (!response.ok) throw new Error(payload.error || 'Produk gagal disimpan.');
+      setMemberMessage(editingAdminProduct ? 'Produk berhasil diperbarui.' : 'Produk berhasil ditambahkan ke katalog.');
+      setIsAdminFormOpen(false);
+      setEditingAdminProduct(null);
+      router.refresh();
+    } catch (error) {
+      setMemberError(error instanceof Error ? error.message : 'Produk gagal disimpan.');
+      throw error;
+    } finally {
+      setIsAdminSaving(false);
+    }
+  };
+
+  const handleAdminEdit = (product: Product) => {
+    const productRow = adminProductRows.find((item) => item.id === product.id);
+    if (!productRow) return setMemberError('Data produk admin belum siap dimuat. Silakan coba lagi.');
+    setMemberMessage('');
+    setMemberError('');
+    setEditingAdminProduct(productRow);
+    setIsAdminFormOpen(true);
+  };
+
+  const handleAdminDelete = async (product: Product) => {
+    if (!window.confirm(`Hapus produk "${product.name}"? Data tidak dapat dipulihkan.`)) return;
+    setMemberError('');
+    setMemberMessage('');
+    try {
+      const response = await fetch('/api/admin/catalog', { method: 'DELETE', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ resource: 'product', id: product.id }) });
+      const payload = await response.json().catch(() => ({}));
+      if (!response.ok) throw new Error(payload.error || 'Produk gagal dihapus.');
+      setAdminProductRows((current) => current.filter((item) => item.id !== product.id));
+      setProducts((current) => current.filter((item) => item.id !== product.id));
+      setMemberMessage('Produk berhasil dihapus.');
+      router.refresh();
+    } catch (error) {
+      setMemberError(error instanceof Error ? error.message : 'Produk gagal dihapus.');
+    }
+  };
+
   return (
     <div className="min-h-screen flex flex-col bg-[#FBFBF9] text-gray-900 font-sans selection:bg-[#F4EBD9]">
       {/* Sticky Navbar */}
@@ -375,13 +457,13 @@ export const CatalogPage: React.FC<CatalogPageProps> = ({
           </section>
         )}
 
-        {viewerRole === 'anggota' && (
+        {(viewerRole === 'anggota' || viewerRole === 'admin') && (
           <div className="mt-4 flex flex-col justify-between gap-3 rounded-2xl border border-[#D9E8E1] bg-[#E8F3EF] p-4 sm:flex-row sm:items-center sm:p-5">
             <div>
-              <p className="text-sm font-extrabold text-[#0F2C23]">Kelola produk Anda</p>
-              <p className="mt-1 text-xs text-gray-600">Tambahkan produk langsung dari katalog tanpa membuka dashboard.</p>
+              <p className="text-sm font-extrabold text-[#0F2C23]">{viewerRole === 'admin' ? 'Mode Admin: Kelola seluruh produk' : 'Kelola produk Anda'}</p>
+              <p className="mt-1 text-xs text-gray-600">{viewerRole === 'admin' ? 'Tambahkan produk untuk toko mana pun serta edit atau hapus seluruh produk katalog.' : 'Tambahkan produk langsung dari katalog tanpa membuka dashboard.'}</p>
             </div>
-            <button type="button" onClick={openMemberAddForm} className="inline-flex items-center justify-center rounded-xl bg-[#0F2C23] px-4 py-2.5 text-sm font-bold text-white shadow-xs transition hover:bg-[#184537]">
+            <button type="button" onClick={viewerRole === 'admin' ? openAdminAddForm : openMemberAddForm} className="inline-flex items-center justify-center rounded-xl bg-[#0F2C23] px-4 py-2.5 text-sm font-bold text-white shadow-xs transition hover:bg-[#184537]">
               + Tambah Produk
             </button>
           </div>
@@ -413,9 +495,9 @@ export const CatalogPage: React.FC<CatalogPageProps> = ({
             key={searchQuery}
             products={filteredProducts}
             onDetailClick={(product) => setSelectedProduct(product)}
-            canManageProduct={(product) => viewerRole === 'anggota' && product.createdBy === viewerUserId}
-            onEditProduct={handleMemberEdit}
-            onDeleteProduct={(product) => void handleMemberDelete(product)}
+            canManageProduct={(product) => viewerRole === 'admin' || (viewerRole === 'anggota' && product.createdBy === viewerUserId)}
+            onEditProduct={viewerRole === 'admin' ? handleAdminEdit : handleMemberEdit}
+            onDeleteProduct={(product) => viewerRole === 'admin' ? void handleAdminDelete(product) : void handleMemberDelete(product)}
           />
         </div>
       </main>
@@ -443,6 +525,24 @@ export const CatalogPage: React.FC<CatalogPageProps> = ({
           storeOptions={[]}
           onClose={() => { setIsMemberFormOpen(false); setEditingMemberProduct(null); }}
           onSave={handleMemberSave}
+        />
+      )}
+
+      {viewerRole === 'admin' && (
+        <ProductFormModal
+          key={`${editingAdminProduct?.id ?? 'new'}-${isAdminFormOpen ? 'open' : 'closed'}`}
+          product={editingAdminProduct}
+          isOpen={isAdminFormOpen}
+          isSaving={isAdminSaving}
+          showStoreName
+          storeNameLocked={Boolean(editingAdminProduct)}
+          defaultStoreName={editingAdminProduct?.store_name ?? storeOptions[0]?.name ?? ''}
+          storeOptions={storeOptions}
+          allowFeatured
+          featuredProductCount={featuredProductCount}
+          maxFeaturedProducts={4}
+          onClose={() => { setIsAdminFormOpen(false); setEditingAdminProduct(null); }}
+          onSave={handleAdminSave}
         />
       )}
 

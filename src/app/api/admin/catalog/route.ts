@@ -78,7 +78,7 @@ async function removeProductImage(
 async function recordAdminAudit(
   serviceClient: NonNullable<ReturnType<typeof getServiceClient>>,
   adminId: string,
-  action: "update" | "delete" | "transfer",
+  action: "create" | "update" | "delete" | "transfer",
   resource: CatalogResource,
   resourceId: string,
   details: Record<string, unknown>,
@@ -184,13 +184,13 @@ async function resolveAdminImages(
   serviceClient: NonNullable<ReturnType<typeof getServiceClient>>,
   ownerId: string,
   drafts: AdminImageDraft[],
-  existingProduct: ProductQueryRow,
+  existingProduct?: ProductQueryRow,
 ) {
   if (drafts.length > MAX_PRODUCT_IMAGES) {
     throw new Error(`Maksimal ${MAX_PRODUCT_IMAGES} foto per produk.`);
   }
 
-  const existing = normalizeProductRow(existingProduct);
+  const existing = existingProduct ? normalizeProductRow(existingProduct) : { image_path: null, product_images: [] };
   const existingById = new Map(existing.product_images.map((image) => [image.id, image]));
   const uploadedPaths: string[] = [];
   const resolved: Array<{ id?: string; imagePath: string; isPrimary: boolean; sortOrder: number }> = [];
@@ -235,6 +235,82 @@ async function resolveAdminImages(
 
   if (resolved.length > 0 && !resolved.some((image) => image.isPrimary)) resolved[0].isPrimary = true;
   return { existing, resolved, uploadedPaths };
+}
+
+async function createProduct(
+  request: Request,
+  serviceClient: NonNullable<ReturnType<typeof getServiceClient>>,
+  adminId: string,
+) {
+  const formData = await request.formData();
+  if (getString(formData.get("resource") ?? undefined) !== "product") return jsonError("Resource tidak valid.", 400);
+
+  const storeId = getString(formData.get("store_id") ?? undefined);
+  const name = getString(formData.get("name") ?? undefined);
+  const category = getString(formData.get("category") ?? undefined);
+  const description = getString(formData.get("description") ?? undefined);
+  const priceInput = getString(formData.get("price") ?? undefined);
+  const isAvailableInput = getString(formData.get("is_available") ?? undefined);
+  const isVisibleInput = getString(formData.get("is_visible") ?? undefined);
+  const isFeaturedInput = getString(formData.get("is_featured") ?? undefined);
+  if (!storeId || !name || !description) return jsonError("Toko, nama, dan deskripsi produk wajib diisi.", 400);
+  if (!PRODUCT_CATEGORIES.includes(category as (typeof PRODUCT_CATEGORIES)[number])) return jsonError("Kategori produk tidak valid.", 400);
+  if (!['true', 'false'].includes(isAvailableInput) || !['true', 'false'].includes(isVisibleInput) || !['true', 'false'].includes(isFeaturedInput)) return jsonError("Status produk tidak valid.", 400);
+
+  let whatsappNumber = "";
+  try {
+    whatsappNumber = validateWhatsappNumber(getString(formData.get("whatsapp_number") ?? undefined));
+  } catch (error) {
+    return jsonError(error instanceof Error ? error.message : "Nomor WhatsApp belum valid.", 400);
+  }
+  const price = priceInput ? Number(priceInput) : null;
+  if (price !== null && (!Number.isFinite(price) || price < 0)) return jsonError("Harga produk tidak valid.", 400);
+  const isAvailable = isAvailableInput === 'true';
+  const isVisible = isVisibleInput === 'true';
+  const isFeatured = isFeaturedInput === 'true';
+
+  const { data: store, error: storeError } = await serviceClient
+    .from("stores")
+    .select("id, owner_id")
+    .eq("id", storeId)
+    .maybeSingle<{ id: string; owner_id: string }>();
+  if (storeError) return jsonError("Toko tujuan gagal dimuat.", 500);
+  if (!store) return jsonError("Toko tujuan tidak ditemukan.", 404);
+
+  if (isFeatured) {
+    const { count, error: featuredCountError } = await serviceClient.from("products").select("id", { count: "exact", head: true }).eq("is_featured", true);
+    if (featuredCountError) return jsonError("Jumlah produk unggulan gagal dimuat.", 500);
+    if ((count ?? 0) >= MAX_FEATURED_PRODUCTS) return jsonError(`Maksimal ${MAX_FEATURED_PRODUCTS} produk unggulan yang dapat ditampilkan di profil UMKM.`, 400);
+  }
+
+  let uploadedPaths: string[] = [];
+  let productId = "";
+  try {
+    const imageResult = await resolveAdminImages(serviceClient, store.owner_id, parseImageDrafts(formData));
+    uploadedPaths = imageResult.uploadedPaths;
+    const primaryPath = imageResult.resolved.find((image) => image.isPrimary)?.imagePath ?? null;
+    const { data: product, error: productError } = await serviceClient
+      .from("products")
+      .insert({ store_id: storeId, created_by: adminId, name, category, description, whatsapp_number: whatsappNumber, price, image_path: primaryPath, is_available: isAvailable, is_visible: isVisible, is_featured: isFeatured })
+      .select("id")
+      .single<{ id: string }>();
+    if (productError || !product) throw productError ?? new Error("Produk gagal dibuat.");
+    productId = product.id;
+
+    if (imageResult.resolved.length > 0) {
+      const { error: imagesError } = await serviceClient.from("product_images").insert(imageResult.resolved.map((image) => ({ product_id: product.id, image_path: image.imagePath, sort_order: image.sortOrder, is_primary: image.isPrimary })));
+      if (imagesError) throw imagesError;
+    }
+    const { data, error: loadError } = await serviceClient.from("products").select(PRODUCT_SELECT).eq("id", product.id).single<ProductQueryRow>();
+    if (loadError) throw loadError;
+    await recordAdminAudit(serviceClient, adminId, "create", "product", product.id, { store_id: storeId, created_by: adminId, image_count: imageResult.resolved.length });
+    revalidatePublicCatalogCache();
+    return NextResponse.json({ product: normalizeProductRow(data) }, { status: 201 });
+  } catch (error) {
+    if (productId) await serviceClient.from("products").delete().eq("id", productId);
+    if (uploadedPaths.length > 0) await serviceClient.storage.from("product-images").remove(uploadedPaths).catch(() => undefined);
+    throw error;
+  }
 }
 
 async function updateProduct(
@@ -423,6 +499,15 @@ export async function POST(request: Request) {
 
   const serviceClient = getServiceClient();
   if (!serviceClient) return jsonError("SUPABASE_SERVICE_ROLE_KEY belum dikonfigurasi di server.", 503);
+
+  if ((request.headers.get("content-type") ?? "").includes("multipart/form-data")) {
+    try {
+      return await createProduct(request, serviceClient, admin.userId);
+    } catch (error) {
+      console.error("Failed to create admin product", error);
+      return jsonError("Produk gagal dibuat.", 500);
+    }
+  }
 
   let body: TransferProductsBody;
   try {
