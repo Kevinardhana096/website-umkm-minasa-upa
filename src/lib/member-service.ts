@@ -5,7 +5,6 @@ import { validateWhatsappNumber } from "@/lib/whatsapp";
 import { saveProduct, type NewProductInput } from "@/lib/store-service";
 
 const STORE_SELECT = "id, owner_id, name, name_normalized, seller_name, description, whatsapp_number, is_active";
-export const DEFAULT_MEMBER_STORE_NAME = "UMKM Desa Minasa Upa Maros";
 
 interface MemberSession {
   userId: string;
@@ -15,6 +14,7 @@ interface MemberSession {
 export interface MemberCatalogData {
   session: MemberSession;
   stores: StoreRow[];
+  ownStore: StoreRow | null;
   products: ProductRow[];
 }
 
@@ -48,10 +48,27 @@ async function getActiveStores() {
   return data ?? [];
 }
 
+async function getOwnStore(userId: string) {
+  const supabase = createClient();
+  const { data, error } = await supabase
+    .from("stores")
+    .select(STORE_SELECT)
+    .eq("owner_id", userId)
+    .maybeSingle<StoreRow>();
+  if (error) throw error;
+  return data;
+}
+
 export async function getMemberCatalogData(): Promise<MemberCatalogData> {
   const session = await requireMemberSession();
   const supabase = createClient();
-  const stores = await getActiveStores();
+  const [activeStores, ownStore] = await Promise.all([
+    getActiveStores(),
+    getOwnStore(session.userId),
+  ]);
+  const stores = ownStore
+    ? [ownStore, ...activeStores.filter((store) => store.id !== ownStore.id)]
+    : activeStores;
   const { data, error } = await supabase
     .from("products")
     .select(PRODUCT_SELECT)
@@ -63,37 +80,47 @@ export async function getMemberCatalogData(): Promise<MemberCatalogData> {
   return {
     session,
     stores,
+    ownStore,
     products: normalizeProductRows(data),
   };
 }
 
-export async function resolveMemberStore(storeName: string, whatsappNumber: string, allowLegacyStore = false) {
+export async function resolveMemberStore(storeId: string | undefined, storeName: string | undefined, whatsappNumber: string) {
   const session = await requireMemberSession();
-  // Anggota menggunakan identitas katalog bersama. Nilai dari client sengaja
-  // diabaikan agar nama ini tidak dapat diubah melalui request langsung.
-  const name = allowLegacyStore ? storeName.trim() : DEFAULT_MEMBER_STORE_NAME;
+  const supabase = createClient();
+  const ownStore = await getOwnStore(session.userId);
+
+  if (storeId) {
+    const { data: selectedStore, error: selectedStoreError } = await supabase
+      .from("stores")
+      .select(STORE_SELECT)
+      .eq("id", storeId)
+      .eq("is_active", true)
+      .maybeSingle<StoreRow>();
+    if (selectedStoreError) throw selectedStoreError;
+    if (!selectedStore) throw new Error("Toko tujuan tidak tersedia atau sedang nonaktif.");
+    return selectedStore;
+  }
+
+  const name = storeName?.trim() ?? "";
   if (name.length < 2) throw new Error("Nama toko minimal 2 karakter.");
   const normalizedName = normalizeStoreName(name);
   const normalizedWhatsapp = validateWhatsappNumber(whatsappNumber);
-  const stores = await getActiveStores();
-  const matches = stores.filter((store) => normalizeStoreName(store.name_normalized ?? store.name) === normalizedName);
-
-  if (matches.length > 1) {
-    throw new Error("Nama toko cocok dengan lebih dari satu data. Pilih nama toko yang tersedia.");
-  }
-  if (matches[0]) return matches[0];
-
-  const supabase = createClient();
-  const { data: ownStore, error: ownStoreError } = await supabase
+  const { data: sameNameStores, error: sameNameError } = await supabase
     .from("stores")
     .select(STORE_SELECT)
-    .eq("owner_id", session.userId)
-    .maybeSingle<StoreRow>();
-  if (ownStoreError) throw ownStoreError;
+    .eq("name_normalized", normalizedName)
+    .returns<StoreRow[]>();
+  if (sameNameError) throw sameNameError;
+
+  const sameNameStore = (sameNameStores ?? [])[0];
+  if (sameNameStore) {
+    if (!sameNameStore.is_active) throw new Error("Toko dengan nama tersebut sedang nonaktif. Pilih toko lain.");
+    return sameNameStore;
+  }
+
   if (ownStore) {
-    // Pertahankan kompatibilitas dengan data anggota lama yang sudah memiliki
-    // toko sendiri. Anggota baru tetap akan memakai toko default bersama.
-    return ownStore;
+    throw new Error("Anda sudah memiliki toko. Pilih toko yang tersedia atau gunakan toko Anda.");
   }
 
   const { data: createdStore, error: createError } = await supabase
@@ -119,10 +146,10 @@ export async function resolveMemberStore(storeName: string, whatsappNumber: stri
 }
 
 export async function saveMemberProduct(input: NewProductInput) {
-  if (!input.storeName) throw new Error("Nama toko wajib diisi.");
+  if (!input.storeId && !input.storeName) throw new Error("Pilih toko atau masukkan nama toko baru.");
   const session = await requireMemberSession();
   const supabase = createClient();
-  let legacyStoreName: string | undefined;
+  let existingStoreId: string | undefined;
 
   if (input.id) {
     const { data: existingProduct, error } = await supabase
@@ -133,19 +160,13 @@ export async function saveMemberProduct(input: NewProductInput) {
       .maybeSingle<{ id: string; store_id: string }>();
     if (error) throw error;
     if (!existingProduct) throw new Error("Produk tidak ditemukan atau bukan milik akun ini.");
-    const { data: existingStore, error: existingStoreError } = await supabase
-      .from("stores")
-      .select("name")
-      .eq("id", existingProduct.store_id)
-      .maybeSingle<{ name: string }>();
-    if (existingStoreError) throw existingStoreError;
-    legacyStoreName = existingStore?.name;
+    existingStoreId = existingProduct.store_id;
   }
 
   const store = await resolveMemberStore(
-    legacyStoreName ?? input.storeName,
+    existingStoreId ?? input.storeId,
+    input.storeName,
     input.whatsappNumber,
-    Boolean(legacyStoreName),
   );
 
   if (input.id) {

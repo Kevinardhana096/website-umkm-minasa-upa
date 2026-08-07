@@ -13,9 +13,9 @@ import { Footer } from './Footer';
 import { FloatingChatWidget, FloatingChatWidgetRef } from './FloatingChatWidget';
 import { MarkdownContent } from './MarkdownContent';
 import { mockProducts } from '@/data/mockProducts';
-import { formatRupiah, type CatalogStore, type CatalogStoreOption, type ProductRow } from '@/lib/products';
+import { formatRupiah, type CatalogStore, type CatalogStoreOption, type ProductRow, type StoreRow } from '@/lib/products';
 import { deleteProduct, revalidatePublicCatalog, type NewProductInput } from '@/lib/store-service';
-import { DEFAULT_MEMBER_STORE_NAME, getMemberCatalogData, mapMemberProduct, saveMemberProduct } from '@/lib/member-service';
+import { getMemberCatalogData, mapMemberProduct, saveMemberProduct } from '@/lib/member-service';
 import { Product } from '@/types/product';
 
 const ProductFormModal = dynamic(() =>
@@ -41,7 +41,8 @@ export const CatalogPage: React.FC<CatalogPageProps> = ({
 }) => {
   const router = useRouter();
   const [products, setProducts] = useState(initialProducts);
-  const [, setMemberStores] = useState(storeOptions);
+  const [memberStores, setMemberStores] = useState(storeOptions);
+  const [memberOwnStore, setMemberOwnStore] = useState<StoreRow | null>(null);
   const [memberProductRows, setMemberProductRows] = useState<ProductRow[]>([]);
   const [adminProductRows, setAdminProductRows] = useState<ProductRow[]>(initialAdminProductRows);
   const [searchQuery, setSearchQuery] = useState('');
@@ -137,6 +138,7 @@ export const CatalogPage: React.FC<CatalogPageProps> = ({
           sellerName: storeRow.seller_name,
           whatsappNumber: storeRow.whatsapp_number,
         })));
+        setMemberOwnStore(data.ownStore);
         setProducts((current) => {
           const byId = new Map(current.map((product) => [product.id, product]));
           mappedProducts.forEach((product) => byId.set(product.id, product));
@@ -208,6 +210,7 @@ export const CatalogPage: React.FC<CatalogPageProps> = ({
       setMemberStores((current) => current.some((storeOption) => storeOption.id === result.store.id)
         ? current
         : [...current, { id: result.store.id, name: result.store.name, sellerName: result.store.seller_name, whatsappNumber: result.store.whatsapp_number }]);
+      if (result.store.owner_id === viewerUserId) setMemberOwnStore(result.store);
       setProducts((current) => {
         const exists = current.some((product) => product.id === mappedProduct.id);
         return exists ? current.map((product) => product.id === mappedProduct.id ? mappedProduct : product) : [mappedProduct, ...current];
@@ -520,9 +523,11 @@ export const CatalogPage: React.FC<CatalogPageProps> = ({
           isOpen={isMemberFormOpen}
           isSaving={isMemberSaving}
           showStoreName
-          storeNameLocked
-          defaultStoreName={editingMemberProduct?.store_name ?? DEFAULT_MEMBER_STORE_NAME}
-          storeOptions={[]}
+          storeNameLocked={Boolean(editingMemberProduct)}
+          defaultStoreId={editingMemberProduct?.store_id ?? memberOwnStore?.id}
+          defaultStoreName={editingMemberProduct?.store_name ?? memberOwnStore?.name ?? ''}
+          storeOptions={memberStores}
+          allowStoreCreation={!memberOwnStore && !editingMemberProduct}
           onClose={() => { setIsMemberFormOpen(false); setEditingMemberProduct(null); }}
           onSave={handleMemberSave}
         />

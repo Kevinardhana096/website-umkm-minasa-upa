@@ -11,8 +11,10 @@ interface ProductFormModalProps {
   product?: ProductRow | null;
   showStoreName?: boolean;
   storeNameLocked?: boolean;
+  defaultStoreId?: string;
   defaultStoreName?: string;
   storeOptions?: CatalogStoreOption[];
+  allowStoreCreation?: boolean;
   defaultWhatsappNumber?: string;
   allowFeatured?: boolean;
   featuredProductCount?: number;
@@ -26,6 +28,7 @@ interface FormImage extends ProductImageInput {
 }
 
 interface FormState {
+  storeId?: string;
   storeName: string;
   name: string;
   category: ProductCategory;
@@ -43,7 +46,7 @@ function previewForPath(imagePath: string) {
   return toPublicImageUrl(imagePath, process.env.NEXT_PUBLIC_SUPABASE_URL) ?? imagePath;
 }
 
-function formFromProduct(product?: ProductRow | null, defaultStoreName = "", defaultWhatsappNumber = ""): FormState {
+function formFromProduct(product?: ProductRow | null, defaultStoreId = "", defaultStoreName = "", defaultWhatsappNumber = ""): FormState {
   const productImages = product?.product_images?.length
     ? product.product_images
     : product?.image_path
@@ -60,6 +63,7 @@ function formFromProduct(product?: ProductRow | null, defaultStoreName = "", def
   if (images.length > 0 && !images.some((image) => image.isPrimary)) images[0].isPrimary = true;
 
   return {
+    storeId: (product?.store_id ?? defaultStoreId) || undefined,
     storeName: product?.store_name ?? defaultStoreName,
     name: product?.name ?? "",
     category: product?.category ?? "Makanan Olahan Lainnya",
@@ -80,8 +84,10 @@ export function ProductFormModal({
   product,
   showStoreName = false,
   storeNameLocked = false,
+  defaultStoreId = "",
   defaultStoreName = "",
   storeOptions = [],
+  allowStoreCreation = false,
   defaultWhatsappNumber = "",
   allowFeatured = false,
   featuredProductCount = 0,
@@ -89,10 +95,18 @@ export function ProductFormModal({
   onClose,
   onSave,
 }: ProductFormModalProps) {
-  const [form, setForm] = useState(() => formFromProduct(product, defaultStoreName, defaultWhatsappNumber));
+  const [form, setForm] = useState(() => formFromProduct(product, defaultStoreId, defaultStoreName, defaultWhatsappNumber));
   const [imageError, setImageError] = useState("");
   const featuredLimitReached = allowFeatured && !product?.is_featured && featuredProductCount >= maxFeaturedProducts;
   if (!isOpen) return null;
+
+  const selectStoreFromName = (storeName: string) => {
+    const normalizedName = storeName.trim().replace(/\s+/g, " ").toLocaleLowerCase("id-ID");
+    const selectedStore = storeOptions.find((store) => store.name.trim().replace(/\s+/g, " ").toLocaleLowerCase("id-ID") === normalizedName);
+    setForm((current) => ({ ...current, storeName, storeId: selectedStore?.id }));
+  };
+
+  const isNewStoreName = showStoreName && !storeNameLocked && form.storeName.trim().length >= 2 && !form.storeId;
 
   const addImages = (files: File[]) => {
     setImageError("");
@@ -173,6 +187,7 @@ export function ProductFormModal({
     event.preventDefault();
     await onSave({
       id: product?.id,
+      storeId: form.storeId,
       storeName: form.storeName.trim() || undefined,
       name: form.name.trim(),
       category: form.category,
@@ -189,7 +204,7 @@ export function ProductFormModal({
       isVisible: form.isVisible,
       isFeatured: allowFeatured ? form.isFeatured : false,
     });
-    setForm(formFromProduct(product, defaultStoreName, defaultWhatsappNumber));
+    setForm(formFromProduct(product, defaultStoreId, defaultStoreName, defaultWhatsappNumber));
   };
 
   return (
@@ -215,14 +230,16 @@ export function ProductFormModal({
                 list="member-store-options"
                 value={form.storeName}
                 readOnly={storeNameLocked}
-                onChange={(event) => setForm({ ...form, storeName: event.target.value })}
-                placeholder="Ketik nama toko atau pilih saran..."
+                onChange={(event) => selectStoreFromName(event.target.value)}
+                placeholder={allowStoreCreation ? "Pilih toko atau ketik toko baru..." : "Ketik nama toko atau pilih saran..."}
                 className="w-full rounded-xl border border-gray-200 bg-white px-3.5 py-2.5 outline-none transition-all placeholder:text-gray-400 focus:border-[#0F2C23] focus:ring-2 focus:ring-[#0F2C23]/15 read-only:bg-gray-50 read-only:text-gray-500"
               />
               <datalist id="member-store-options">
                 {storeOptions.map((store) => <option key={store.id} value={store.name} />)}
               </datalist>
-              <p className="mt-1 text-[11px] text-gray-400">Nama toko yang sama dengan format huruf atau spasi berbeda akan dicocokkan otomatis.</p>
+              {isNewStoreName && allowStoreCreation
+                ? <p className="mt-1 text-[11px] font-medium text-emerald-700">Toko baru “{form.storeName.trim()}” akan dibuat saat produk disimpan.</p>
+                : <p className="mt-1 text-[11px] text-gray-400">Pilih toko aktif dari saran. Nama yang belum tersedia dapat dibuat sebagai toko Anda.</p>}
             </Field>
           )}
 

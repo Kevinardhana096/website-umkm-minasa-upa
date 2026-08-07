@@ -16,6 +16,7 @@ export interface ProductImageInput {
 
 export interface NewProductInput {
   id?: string;
+  storeId?: string;
   storeName?: string;
   name: string;
   category: ProductCategory;
