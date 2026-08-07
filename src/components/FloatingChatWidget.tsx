@@ -355,8 +355,8 @@ export const FloatingChatWidget = forwardRef<FloatingChatWidgetRef, FloatingChat
   return (
     <div className="fixed bottom-4 right-4 sm:bottom-6 sm:right-6 z-50">
       {isOpen && (
-        <div role="dialog" aria-modal="false" aria-label="Asisten UMKM Bot" className="fixed bottom-20 right-4 left-4 z-50 flex h-[440px] max-h-[75vh] flex-col overflow-hidden rounded-2xl border border-gray-200 bg-white shadow-2xl sm:absolute sm:bottom-16 sm:right-0 sm:left-auto sm:h-[460px] sm:w-96">
-          <div className="flex items-center justify-between bg-[#963E1B] p-4 text-white">
+        <div role="dialog" aria-modal="true" aria-label="Asisten UMKM Bot" className="fixed inset-0 z-50 flex h-full h-[100dvh] w-full flex-col overflow-hidden bg-white shadow-2xl sm:absolute sm:inset-auto sm:bottom-16 sm:right-0 sm:left-auto sm:h-[460px] sm:w-96 sm:rounded-2xl sm:border sm:border-gray-200">
+          <div className="flex shrink-0 items-center justify-between bg-[#963E1B] p-4 text-white">
             <div className="flex items-center gap-2.5">
               <div className="flex h-9 w-9 items-center justify-center overflow-hidden"><DotLottieReact src="https://lottie.host/c0ff9600-dd79-4a92-91d2-da4986399c36/rc8EdQGXyJ.json" loop autoplay className="h-9 w-9 object-contain" /></div>
               <div><h4 className="text-sm font-bold">Asisten UMKM Bot</h4><p className="flex items-center gap-1 text-[11px] text-amber-100"><span className="h-2 w-2 rounded-full bg-emerald-400" /> Online</p></div>
@@ -426,8 +426,8 @@ export const FloatingChatWidget = forwardRef<FloatingChatWidgetRef, FloatingChat
             )}
           </div>
 
-          <form onSubmit={handleSend} className="flex gap-2 border-t border-gray-100 bg-white p-3">
-            <input aria-label="Pesan untuk asisten UMKM" type="text" value={inputText} onChange={(event) => setInputText(event.target.value)} placeholder={isReplying ? "Menyiapkan jawaban..." : retryAfterSeconds > 0 ? `Coba lagi dalam ${retryAfterSeconds} detik...` : "Tulis pesan..."} disabled={isReplying || retryAfterSeconds > 0} className="flex-1 rounded-xl bg-gray-100 px-3 py-2 text-xs focus:outline-none focus:ring-1 focus:ring-[#963E1B] disabled:cursor-not-allowed disabled:opacity-60" />
+          <form onSubmit={handleSend} className="flex shrink-0 gap-2 border-t border-gray-100 bg-white p-3">
+            <input aria-label="Pesan untuk asisten UMKM" type="text" value={inputText} onChange={(event) => setInputText(event.target.value)} placeholder={isReplying ? "Menyiapkan jawaban..." : retryAfterSeconds > 0 ? `Coba lagi dalam ${retryAfterSeconds} detik...` : "Tulis pesan..."} disabled={isReplying || retryAfterSeconds > 0} className="flex-1 rounded-xl bg-gray-100 px-3 py-2 text-[16px] sm:text-xs focus:outline-none focus:ring-1 focus:ring-[#963E1B] disabled:cursor-not-allowed disabled:opacity-60" />
             <button type="submit" disabled={isReplying || retryAfterSeconds > 0} className="rounded-xl bg-[#963E1B] p-2.5 text-white transition-colors hover:bg-[#803214] disabled:cursor-not-allowed disabled:opacity-60" aria-label="Kirim pesan"><Send className="h-4 w-4" /></button>
           </form>
         </div>
@@ -435,7 +435,9 @@ export const FloatingChatWidget = forwardRef<FloatingChatWidgetRef, FloatingChat
 
       <button
         onClick={toggleGlobalChat}
-        className="relative group flex h-14 w-14 items-center justify-center bg-transparent border-0 outline-none transition-transform duration-300 hover:scale-110 active:scale-95 cursor-pointer overflow-visible"
+        className={`relative group h-14 w-14 items-center justify-center bg-transparent border-0 outline-none transition-transform duration-300 hover:scale-110 active:scale-95 cursor-pointer overflow-visible ${
+          isOpen ? 'hidden sm:flex' : 'flex'
+        }`}
         aria-label={isOpen ? 'Tutup chat' : 'Buka chat'}
       >
         {/* Icon State Terbuka (Sesudah Diklik: Ukuran 56px + Border + Latar Kaca) */}
