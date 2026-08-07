@@ -40,7 +40,7 @@ export function AuthBrandPanel() {
           <p className="mt-0.5 text-[11px] text-gray-300">Kementerian & Perguruan Tinggi Mitra Program</p>
         </div>
         <div className="pt-1">
-          <InstitutionalLogos imageClassName="h-8 sm:h-11 w-auto object-contain" />
+          <InstitutionalLogos imageClassName="h-7 sm:h-9 md:h-10 w-auto object-contain" />
         </div>
       </div>
     </div>
