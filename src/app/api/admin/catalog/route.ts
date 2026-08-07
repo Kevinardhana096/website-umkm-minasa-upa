@@ -20,6 +20,18 @@ interface StoreUpdateBody {
   is_active?: boolean;
 }
 
+interface TransferProductsBody {
+  action?: "transfer_products";
+  product_ids?: unknown;
+  target_user_id?: string;
+}
+
+interface ImageTransfer {
+  product_id: string;
+  from_path: string;
+  to_path: string;
+}
+
 function jsonError(message: string, status: number) {
   return NextResponse.json({ error: message }, { status });
 }
@@ -47,7 +59,7 @@ async function requireAdmin() {
     .maybeSingle<{ role: "toko" | "admin" }>();
   if (error || profile?.role !== "admin") return null;
 
-  return { userId };
+  return { userId, client: supabase };
 }
 
 function isInternalImagePath(imagePath: string | null | undefined) {
@@ -66,7 +78,7 @@ async function removeProductImage(
 async function recordAdminAudit(
   serviceClient: NonNullable<ReturnType<typeof getServiceClient>>,
   adminId: string,
-  action: "update" | "delete",
+  action: "update" | "delete" | "transfer",
   resource: CatalogResource,
   resourceId: string,
   details: Record<string, unknown>,
@@ -83,6 +95,39 @@ async function recordAdminAudit(
   // successful catalog mutation from being reported as failed if it has not
   // been run yet, while leaving an actionable server-side error.
   if (error) console.error("Failed to write admin audit log", error);
+}
+
+function isBanned(bannedUntil: string | null | undefined) {
+  if (!bannedUntil) return false;
+  const time = new Date(bannedUntil).getTime();
+  return !Number.isNaN(time) && time > Date.now();
+}
+
+function createTransferredImagePath(targetUserId: string, imagePath: string) {
+  const extension = imagePath.split("/").pop()?.split(".").pop()?.toLowerCase();
+  const safeExtension = extension && /^[a-z0-9]{1,8}$/.test(extension) ? extension : "bin";
+  return `${targetUserId}/${crypto.randomUUID()}.${safeExtension}`;
+}
+
+function getImageTransfers(products: ProductQueryRow[], targetUserId: string) {
+  const destinationBySourcePath = new Map<string, string>();
+  const transfers: ImageTransfer[] = [];
+  for (const product of products) {
+    const paths = new Set([
+      ...(product.image_path ? [product.image_path] : []),
+      ...(product.product_images ?? []).map((image) => image.image_path),
+    ].filter(isInternalImagePath));
+    for (const fromPath of paths) {
+      const toPath = destinationBySourcePath.get(fromPath) ?? createTransferredImagePath(targetUserId, fromPath);
+      destinationBySourcePath.set(fromPath, toPath);
+      transfers.push({ product_id: product.id, from_path: fromPath, to_path: toPath });
+    }
+  }
+  return transfers;
+}
+
+async function rollbackImageMoves(serviceClient: NonNullable<ReturnType<typeof getServiceClient>>, movedImages: Array<{ from: string; to: string }>) {
+  await Promise.all([...movedImages].reverse().map(({ from, to }) => serviceClient.storage.from("product-images").move(to, from).catch(() => undefined)));
 }
 
 function getString(value: FormDataEntryValue | undefined) {
@@ -370,6 +415,86 @@ async function updateStore(
   });
   revalidatePublicCatalogCache();
   return NextResponse.json({ store: data });
+}
+
+export async function POST(request: Request) {
+  const admin = await requireAdmin();
+  if (!admin) return jsonError("Akses admin diperlukan.", 403);
+
+  const serviceClient = getServiceClient();
+  if (!serviceClient) return jsonError("SUPABASE_SERVICE_ROLE_KEY belum dikonfigurasi di server.", 503);
+
+  let body: TransferProductsBody;
+  try {
+    body = await request.json() as TransferProductsBody;
+  } catch {
+    return jsonError("Format request tidak valid.", 400);
+  }
+
+  const productIds = Array.isArray(body.product_ids)
+    ? body.product_ids.filter((id): id is string => typeof id === "string" && id.trim().length > 0).map((id) => id.trim())
+    : [];
+  const targetUserId = body.target_user_id?.trim() ?? "";
+  if (body.action !== "transfer_products" || productIds.length === 0 || !targetUserId) {
+    return jsonError("Produk dan akun tujuan wajib dipilih.", 400);
+  }
+  if (productIds.length > 50 || new Set(productIds).size !== productIds.length) {
+    return jsonError("Daftar produk tidak valid.", 400);
+  }
+
+  const { data: targetUserData, error: targetUserError } = await serviceClient.auth.admin.getUserById(targetUserId);
+  if (targetUserError || !targetUserData.user) return jsonError("Akun tujuan tidak ditemukan.", 404);
+  if (isBanned(targetUserData.user.banned_until)) return jsonError("Akun tujuan sedang dinonaktifkan.", 400);
+
+  const { data: targetProfile, error: targetProfileError } = await serviceClient
+    .from("profiles")
+    .select("role")
+    .eq("id", targetUserId)
+    .maybeSingle<{ role: "toko" | "admin" | "anggota" }>();
+  if (targetProfileError) return jsonError("Profil akun tujuan gagal dimuat.", 500);
+  if (targetProfile?.role !== "anggota") return jsonError("Akun tujuan harus memiliki role Anggota.", 400);
+
+  const { data: products, error: productsError } = await serviceClient
+    .from("products")
+    .select(PRODUCT_SELECT)
+    .in("id", productIds)
+    .returns<ProductQueryRow[]>();
+  if (productsError) return jsonError("Data produk gagal dimuat.", 500);
+  if ((products ?? []).length !== productIds.length) return jsonError("Satu atau lebih produk tidak ditemukan.", 404);
+
+  const imageTransfers = getImageTransfers(products ?? [], targetUserId);
+  const uniqueMoves = [...new Map(imageTransfers.map((transfer) => [transfer.from_path, transfer.to_path])).entries()]
+    .map(([from, to]) => ({ from, to }));
+  const movedImages: Array<{ from: string; to: string }> = [];
+
+  try {
+    for (const move of uniqueMoves) {
+      const { error } = await serviceClient.storage.from("product-images").move(move.from, move.to);
+      if (error) throw new Error("Foto produk gagal dipindahkan.");
+      movedImages.push(move);
+    }
+
+    const { error: transferError } = await admin.client.rpc("admin_transfer_products", {
+      p_product_ids: productIds,
+      p_target_user_id: targetUserId,
+      p_image_transfers: imageTransfers,
+    });
+    if (transferError) throw transferError;
+
+    await Promise.all((products ?? []).map((product) => recordAdminAudit(serviceClient, admin.userId, "transfer", "product", product.id, {
+      from_created_by: product.created_by,
+      to_user_id: targetUserId,
+      to_email: targetUserData.user.email ?? "",
+      store_id: product.store_id,
+      transferred_image_count: imageTransfers.filter((transfer) => transfer.product_id === product.id).length,
+    })));
+    revalidatePublicCatalogCache();
+    return NextResponse.json({ ok: true, transferred_count: productIds.length });
+  } catch (error) {
+    await rollbackImageMoves(serviceClient, movedImages);
+    console.error("Failed to transfer admin product access", error);
+    return jsonError(error instanceof Error ? error.message : "Produk gagal ditransfer.", 500);
+  }
 }
 
 export async function PATCH(request: Request) {

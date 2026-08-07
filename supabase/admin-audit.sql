@@ -4,7 +4,7 @@
 create table if not exists public.admin_audit_logs (
   id uuid primary key default gen_random_uuid(),
   admin_id uuid references auth.users(id) on delete set null,
-  action text not null check (action in ('create', 'update', 'delete', 'role', 'ban', 'unban', 'reset_password')),
+  action text not null check (action in ('create', 'update', 'delete', 'transfer', 'role', 'ban', 'unban', 'reset_password')),
   resource text not null check (resource in ('store', 'product', 'user')),
   resource_id uuid,
   details jsonb not null default '{}'::jsonb,
@@ -26,7 +26,7 @@ alter table public.admin_audit_logs
   drop constraint if exists admin_audit_logs_action_check;
 alter table public.admin_audit_logs
   add constraint admin_audit_logs_action_check
-  check (action in ('create', 'update', 'delete', 'role', 'ban', 'unban', 'reset_password'));
+  check (action in ('create', 'update', 'delete', 'transfer', 'role', 'ban', 'unban', 'reset_password'));
 
 alter table public.admin_audit_logs
   drop constraint if exists admin_audit_logs_resource_check;

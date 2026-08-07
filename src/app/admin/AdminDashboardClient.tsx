@@ -7,6 +7,7 @@ import { createClient } from "@/lib/supabase/client";
 import type { AdminMonitoringData, AdminProductSummary, AdminStoreSummary } from "@/lib/admin-service";
 import { AdminUserManagement } from "@/components/admin/AdminUserManagement";
 import { AdminProductMonitoring } from "@/components/admin/AdminProductMonitoring";
+import { TransferProductModal } from "@/components/admin/TransferProductModal";
 import { AdminStoreEditModal } from "@/components/admin/AdminStoreEditModal";
 import { ProductFormModal } from "@/components/dashboard/ProductFormModal";
 import { MAX_FEATURED_PRODUCTS } from "@/lib/products";
@@ -28,8 +29,10 @@ export function AdminDashboardClient({ initialData }: AdminDashboardClientProps)
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
   const [editingStore, setEditingStore] = useState<AdminStoreSummary | null>(null);
   const [editingProduct, setEditingProduct] = useState<AdminProductSummary | null>(null);
+  const [transferringProducts, setTransferringProducts] = useState<AdminProductSummary[]>([]);
   const [pendingCatalogAction, setPendingCatalogAction] = useState<string | null>(null);
   const [catalogError, setCatalogError] = useState("");
+  const [catalogMessage, setCatalogMessage] = useState("");
 
   const filteredStores = useMemo(() => {
     const query = searchQuery.trim().toLowerCase();
@@ -69,6 +72,7 @@ export function AdminDashboardClient({ initialData }: AdminDashboardClientProps)
     if (!editingStore) return;
     setPendingCatalogAction(`${editingStore.id}:save`);
     setCatalogError("");
+    setCatalogMessage("");
     try {
       const response = await fetch("/api/admin/catalog", {
         method: "PATCH",
@@ -99,6 +103,7 @@ export function AdminDashboardClient({ initialData }: AdminDashboardClientProps)
     if (!editingProduct?.id) return;
     setPendingCatalogAction(`${editingProduct.id}:save`);
     setCatalogError("");
+    setCatalogMessage("");
     try {
       const formData = new FormData();
       formData.append("resource", "product");
@@ -136,6 +141,7 @@ export function AdminDashboardClient({ initialData }: AdminDashboardClientProps)
   const deleteCatalogData = async (resource: "store" | "product", id: string) => {
     setPendingCatalogAction(`${id}:delete`);
     setCatalogError("");
+    setCatalogMessage("");
     try {
       const response = await fetch("/api/admin/catalog", {
         method: "DELETE",
@@ -162,6 +168,31 @@ export function AdminDashboardClient({ initialData }: AdminDashboardClientProps)
   const handleDeleteProduct = (product: AdminProductSummary) => {
     const confirmed = window.confirm(`Hapus produk "${product.name}" dari toko ${product.store_name}? Data tidak dapat dipulihkan.`);
     if (confirmed) void deleteCatalogData("product", product.id);
+  };
+
+  const handleTransferProducts = async (targetUserId: string) => {
+    if (transferringProducts.length === 0) return;
+    setPendingCatalogAction("transfer");
+    setCatalogError("");
+    setCatalogMessage("");
+    try {
+      const response = await fetch("/api/admin/catalog", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ action: "transfer_products", product_ids: transferringProducts.map((product) => product.id), target_user_id: targetUserId }),
+      });
+      const payload = await response.json().catch(() => ({}));
+      if (!response.ok) throw new Error(payload.error || "Produk gagal ditransfer.");
+      setCatalogMessage(`${transferringProducts.length} produk berhasil ditransfer ke akun anggota.`);
+      setTransferringProducts([]);
+      router.refresh();
+    } catch (error) {
+      const message = error instanceof Error ? error.message : "Produk gagal ditransfer.";
+      setCatalogError(message);
+      throw new Error(message);
+    } finally {
+      setPendingCatalogAction(null);
+    }
   };
 
   return (
@@ -270,6 +301,7 @@ export function AdminDashboardClient({ initialData }: AdminDashboardClientProps)
       <div className="mx-auto max-w-7xl space-y-8 px-4 py-6 sm:px-6 lg:px-8">
 
         {catalogError && <div role="alert" className="rounded-xl border border-red-100 bg-red-50 px-4 py-3 text-sm font-semibold text-red-700">{catalogError}</div>}
+        {catalogMessage && <div role="status" className="rounded-xl border border-emerald-100 bg-emerald-50 px-4 py-3 text-sm font-semibold text-emerald-700">{catalogMessage}</div>}
 
         {activeSection === "monitoring" ? <>
         <section className="grid grid-cols-2 gap-3 sm:gap-4 lg:grid-cols-4">
@@ -314,7 +346,7 @@ export function AdminDashboardClient({ initialData }: AdminDashboardClientProps)
             </div>
           )}
         </section>
-        </> : activeSection === "products" ? <AdminProductMonitoring products={initialData.products} onEdit={setEditingProduct} onDelete={handleDeleteProduct} pendingAction={pendingCatalogAction} /> : <AdminUserManagement />}
+        </> : activeSection === "products" ? <AdminProductMonitoring products={initialData.products} onEdit={setEditingProduct} onDelete={handleDeleteProduct} onTransfer={setTransferringProducts} pendingAction={pendingCatalogAction} /> : <AdminUserManagement />}
       </div>
 
       <AdminStoreEditModal
@@ -335,6 +367,7 @@ export function AdminDashboardClient({ initialData }: AdminDashboardClientProps)
         onClose={() => setEditingProduct(null)}
         onSave={handleSaveProduct}
       />
+      {transferringProducts.length > 0 && <TransferProductModal products={transferringProducts} isSubmitting={pendingCatalogAction === "transfer"} onClose={() => { if (!pendingCatalogAction) setTransferringProducts([]); }} onTransfer={handleTransferProducts} />}
     </main>
   );
 }

@@ -134,9 +134,10 @@ returns trigger
 language plpgsql
 as $$
 begin
-  -- Allow the FK's ON DELETE SET NULL cleanup while blocking ownership transfer.
+  -- Allow the FK's ON DELETE SET NULL cleanup. A transfer is permitted only
+  -- for an authenticated admin via admin_transfer_products().
   if new.store_id <> old.store_id
-    or (new.created_by is distinct from old.created_by and new.created_by is not null) then
+    or (new.created_by is distinct from old.created_by and new.created_by is not null and not public.is_admin()) then
     raise exception 'Store dan pembuat produk tidak dapat diubah.';
   end if;
   return new;

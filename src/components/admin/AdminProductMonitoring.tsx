@@ -1,7 +1,7 @@
 "use client";
 
 import { useMemo, useState } from "react";
-import { CheckCircle2, Edit, Eye, EyeOff, PackageSearch, Search, Star, Trash2, XCircle } from "lucide-react";
+import { ArrowRightLeft, CheckCircle2, Edit, Eye, EyeOff, PackageSearch, Search, Star, Trash2, XCircle } from "lucide-react";
 import type { AdminProductSummary } from "@/lib/admin-service";
 
 type ProductStatusFilter = "semua" | "unggulan" | "tampil" | "tersembunyi" | "tersedia" | "habis";
@@ -10,12 +10,14 @@ interface AdminProductMonitoringProps {
   products: AdminProductSummary[];
   onEdit: (product: AdminProductSummary) => void;
   onDelete: (product: AdminProductSummary) => void;
+  onTransfer: (products: AdminProductSummary[]) => void;
   pendingAction?: string | null;
 }
 
-export function AdminProductMonitoring({ products, onEdit, onDelete, pendingAction }: AdminProductMonitoringProps) {
+export function AdminProductMonitoring({ products, onEdit, onDelete, onTransfer, pendingAction }: AdminProductMonitoringProps) {
   const [searchQuery, setSearchQuery] = useState("");
   const [statusFilter, setStatusFilter] = useState<ProductStatusFilter>("semua");
+  const [selectedProductIds, setSelectedProductIds] = useState<string[]>([]);
 
   const filteredProducts = useMemo(() => {
     const query = searchQuery.trim().toLowerCase();
@@ -31,6 +33,13 @@ export function AdminProductMonitoring({ products, onEdit, onDelete, pendingActi
       return matchesSearch && matchesStatus;
     });
   }, [products, searchQuery, statusFilter]);
+
+  const selectedProducts = filteredProducts.filter((product) => selectedProductIds.includes(product.id));
+  const allFilteredSelected = filteredProducts.length > 0 && filteredProducts.every((product) => selectedProductIds.includes(product.id));
+  const toggleProduct = (productId: string) => setSelectedProductIds((current) => current.includes(productId) ? current.filter((id) => id !== productId) : [...current, productId]);
+  const toggleAllFiltered = () => setSelectedProductIds((current) => allFilteredSelected
+    ? current.filter((id) => !filteredProducts.some((product) => product.id === id))
+    : [...new Set([...current, ...filteredProducts.map((product) => product.id)])]);
 
   return (
     <section className="overflow-hidden rounded-2xl border border-gray-100 bg-white shadow-sm">
@@ -59,16 +68,18 @@ export function AdminProductMonitoring({ products, onEdit, onDelete, pendingActi
         </div>
       </div>
 
+      {selectedProducts.length > 0 && <div className="flex flex-col gap-3 border-b border-emerald-100 bg-emerald-50 px-5 py-3 sm:flex-row sm:items-center sm:justify-between"><p className="text-sm font-bold text-emerald-800">{selectedProducts.length} produk dipilih</p><button type="button" onClick={() => onTransfer(selectedProducts)} disabled={Boolean(pendingAction)} className="inline-flex items-center justify-center gap-2 rounded-lg bg-[#0F2C23] px-3 py-2 text-xs font-bold text-white hover:bg-[#184537] disabled:opacity-60"><ArrowRightLeft className="h-3.5 w-3.5" /> Transfer produk terpilih</button></div>}
+
       {filteredProducts.length === 0 ? (
         <div className="p-12 text-center text-sm text-gray-500">Tidak ada produk yang cocok dengan filter.</div>
       ) : (
         <div className="overflow-x-auto">
-          <table className="w-full min-w-[1040px] text-left text-sm">
+          <table className="w-full min-w-[1120px] text-left text-sm">
             <thead className="border-b border-gray-100 bg-gray-50/70 text-xs font-bold uppercase tracking-wider text-gray-500">
-              <tr><th className="px-5 py-4">Produk</th><th className="px-5 py-4">Toko</th><th className="px-5 py-4">Harga</th><th className="px-5 py-4">Status</th><th className="px-5 py-4">Diperbarui</th><th className="px-5 py-4">Aksi</th></tr>
+              <tr><th className="w-12 px-5 py-4"><input type="checkbox" checked={allFilteredSelected} onChange={toggleAllFiltered} aria-label="Pilih semua produk hasil filter" /></th><th className="px-5 py-4">Produk</th><th className="px-5 py-4">Toko</th><th className="px-5 py-4">Harga</th><th className="px-5 py-4">Status</th><th className="px-5 py-4">Diperbarui</th><th className="px-5 py-4">Aksi</th></tr>
             </thead>
             <tbody className="divide-y divide-gray-100">
-              {filteredProducts.map((product) => <ProductRow key={product.id} product={product} onEdit={onEdit} onDelete={onDelete} pendingAction={pendingAction} />)}
+              {filteredProducts.map((product) => <ProductRow key={product.id} product={product} isSelected={selectedProductIds.includes(product.id)} onSelect={() => toggleProduct(product.id)} onEdit={onEdit} onDelete={onDelete} onTransfer={() => onTransfer([product])} pendingAction={pendingAction} />)}
             </tbody>
           </table>
         </div>
@@ -77,16 +88,17 @@ export function AdminProductMonitoring({ products, onEdit, onDelete, pendingActi
   );
 }
 
-function ProductRow({ product, onEdit, onDelete, pendingAction }: { product: AdminProductSummary; onEdit: (product: AdminProductSummary) => void; onDelete: (product: AdminProductSummary) => void; pendingAction?: string | null }) {
-  const isPending = pendingAction?.startsWith(`${product.id}:`);
+function ProductRow({ product, isSelected, onSelect, onEdit, onDelete, onTransfer, pendingAction }: { product: AdminProductSummary; isSelected: boolean; onSelect: () => void; onEdit: (product: AdminProductSummary) => void; onDelete: (product: AdminProductSummary) => void; onTransfer: () => void; pendingAction?: string | null }) {
+  const isPending = Boolean(pendingAction);
   return (
     <tr className="hover:bg-gray-50/70">
+      <td className="px-5 py-4"><input type="checkbox" checked={isSelected} onChange={onSelect} disabled={isPending} aria-label={`Pilih ${product.name}`} /></td>
       <td className="max-w-[360px] px-5 py-4"><p className="font-bold text-gray-900">{product.name}</p><p className="mt-1 line-clamp-2 text-xs text-gray-500">{product.description || "Tanpa deskripsi"}</p>{product.product_images.length > 1 && <p className="mt-1 text-[11px] font-bold text-[#963E1B]">{product.product_images.length} foto galeri</p>}</td>
       <td className="px-5 py-4"><p className="font-semibold text-gray-700">{product.store_name}</p><p className={`mt-1 text-xs font-semibold ${product.store_is_active ? "text-emerald-600" : "text-gray-500"}`}>{product.store_is_active ? "Toko aktif" : "Toko nonaktif"}</p></td>
       <td className="px-5 py-4 whitespace-nowrap font-semibold text-gray-700">{formatPrice(product.price)}</td>
       <td className="px-5 py-4"><div className="flex flex-wrap gap-1.5">{product.is_featured && <span className="inline-flex items-center gap-1 rounded-full bg-amber-50 px-2.5 py-1 text-xs font-bold text-amber-700"><Star className="h-3.5 w-3.5 fill-current" /> Unggulan</span>}{product.is_visible ? <span className="inline-flex items-center gap-1 rounded-full bg-emerald-50 px-2.5 py-1 text-xs font-bold text-emerald-700"><Eye className="h-3.5 w-3.5" /> Tampil</span> : <span className="inline-flex items-center gap-1 rounded-full bg-gray-100 px-2.5 py-1 text-xs font-bold text-gray-600"><EyeOff className="h-3.5 w-3.5" /> Tersembunyi</span>}{product.is_available ? <span className="inline-flex items-center gap-1 rounded-full bg-blue-50 px-2.5 py-1 text-xs font-bold text-blue-700"><CheckCircle2 className="h-3.5 w-3.5" /> Tersedia</span> : <span className="inline-flex items-center gap-1 rounded-full bg-amber-50 px-2.5 py-1 text-xs font-bold text-amber-700"><XCircle className="h-3.5 w-3.5" /> Tidak tersedia</span>}</div></td>
       <td className="px-5 py-4 text-xs text-gray-500">{formatDate(product.updated_at)}</td>
-      <td className="px-5 py-4"><div className="flex gap-2"><button type="button" onClick={() => onEdit(product)} disabled={isPending} className="inline-flex items-center gap-1.5 rounded-lg border border-gray-200 px-2.5 py-1.5 text-xs font-bold text-gray-700 hover:bg-gray-50 disabled:cursor-not-allowed disabled:opacity-50"><Edit className="h-3.5 w-3.5" /> Edit</button><button type="button" onClick={() => onDelete(product)} disabled={isPending} className="inline-flex items-center gap-1.5 rounded-lg border border-rose-200 px-2.5 py-1.5 text-xs font-bold text-rose-700 hover:bg-rose-50 disabled:cursor-not-allowed disabled:opacity-50"><Trash2 className="h-3.5 w-3.5" /> Hapus</button></div></td>
+      <td className="px-5 py-4"><div className="flex gap-2"><button type="button" onClick={() => onEdit(product)} disabled={isPending} className="inline-flex items-center gap-1.5 rounded-lg border border-gray-200 px-2.5 py-1.5 text-xs font-bold text-gray-700 hover:bg-gray-50 disabled:cursor-not-allowed disabled:opacity-50"><Edit className="h-3.5 w-3.5" /> Edit</button><button type="button" onClick={onTransfer} disabled={isPending} className="inline-flex items-center gap-1.5 rounded-lg border border-amber-200 px-2.5 py-1.5 text-xs font-bold text-amber-800 hover:bg-amber-50 disabled:cursor-not-allowed disabled:opacity-50"><ArrowRightLeft className="h-3.5 w-3.5" /> Transfer</button><button type="button" onClick={() => onDelete(product)} disabled={isPending} className="inline-flex items-center gap-1.5 rounded-lg border border-rose-200 px-2.5 py-1.5 text-xs font-bold text-rose-700 hover:bg-rose-50 disabled:cursor-not-allowed disabled:opacity-50"><Trash2 className="h-3.5 w-3.5" /> Hapus</button></div></td>
     </tr>
   );
 }
